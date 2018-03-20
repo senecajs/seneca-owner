@@ -1,0 +1,39 @@
+{
+  "name": "seneca-owner",
+  "version": "0.0.1",
+  "description": "Seneca plugin to add user ownership annotations to entities.",
+  "main": "owner.js",
+  "scripts": {
+    "test": "lab -P test -t 90",
+    "prettier": "prettier --write --no-semi --single-quote *.js lib/*.js test/*.js",
+    "coveralls": "lab -s -P test -r lcov | coveralls"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/voxgig/seneca-owner.git"
+  },
+  "author": "Richard Rodger (richardrodger.com)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/voxgig/seneca-owner/issues"
+  },
+  "homepage": "https://github.com/voxgig/seneca-owner#readme",
+  "files": [
+    "LICENSE",
+    "README.md",
+    "kv.js"
+  ],
+  "dependencies": {
+    "optioner": "1.1.x"
+  },
+  "devDependencies": {
+    "seneca-plugin-validator": "0",
+    "prettier": "1",
+    "seneca": "github:senecajs/seneca",
+    "seneca-entity": "github:senecajs/seneca-entity",
+    "code": "4",
+    "coveralls": "3",
+    "joi": "12",
+    "lab": "14"
+  }
+}
