@@ -21,7 +21,7 @@
   "files": [
     "LICENSE",
     "README.md",
-    "kv.js"
+    "owner.js"
   ],
   "dependencies": {
     "optioner": "1.1.x"
@@ -30,7 +30,7 @@
     "seneca-plugin-validator": "0",
     "prettier": "1",
     "seneca": "github:senecajs/seneca",
-    "seneca-entity": "github:senecajs/seneca-entity",
+    "seneca-entity": "2",
     "code": "4",
     "coveralls": "3",
     "joi": "12",
