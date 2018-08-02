@@ -9,7 +9,7 @@ const optioner = Optioner({
   userprop: Joi.string().default('user'),
   entprop: Joi.string().default('ent'),
   inbound: Joi.array().required(),
-  annotate: Joi.array().required(),
+  annotate: Joi.array().required()
 })
 
 module.exports = function owner(options) {
@@ -19,33 +19,20 @@ module.exports = function owner(options) {
   const entprop = opts.entprop
 
   // console.log(userprop, entprop)
-  
-  opts.inbound.forEach(function(msgpat) {
-    seneca.wrap(msgpat, function(msg, reply) {
-      // TODO: error if userprop not found: configurable
-      var userdata = msg[userprop]
-
-      
-      // TODO: fixedargs should be renamed
-      this.fixedargs[userprop] = userdata
-
-      this.prior(msg, reply)
-    })
-  })
 
   opts.annotate.forEach(function(msgpat) {
-    seneca.add(msgpat, function(msg, reply) {
+    seneca.add(msgpat, function(msg, reply, meta) {
       var userdata = msg[userprop]
       var ent = msg[entprop]
 
       // TODO: make these props configurable too
-      ent.user = userdata.id
-      ent.org = userdata.org
+      const principal = meta.custom.allow
+      ent.user = principal.user
+      ent.org = principal.org
 
       this.prior(msg, reply)
     })
   })
 }
 
-const intern = (module.exports.intern = {
-})
+const intern = (module.exports.intern = {})
