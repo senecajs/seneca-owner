@@ -19,21 +19,24 @@ lab.test('happy', fin => {
     .test(fin)
     .use('entity')
     .add('role:foo,add:bar', function(msg, reply) {
-      this.make('bar', { who: msg.who }).save$(reply)
+      this.make('core/act').save$(reply)
     })
     .use('..', {
-      annotate: ['role:entity,base:core']
+      annotate: ['role:entity,cmd:save,base:core']
+    })
+    .delegate(null, {
+      custom: {
+        allow: {
+          usr: 'alice',
+          org: 'alice'
+        }
+      }
     })
     .ready(function() {
-      this.act(
-        'role:foo,add:bar,who:zed',
-        { user: { id: 'u0', org: 'o0' } },
-        function(err, out) {
-          expect(out.who).equal('zed')
-          expect(out.user).equal('u0')
-          expect(out.org).equal('o0')
-          fin()
-        }
-      )
+      this.act('role:foo,add:bar', function(err, out) {
+        expect(out.usr).equal('alice')
+        expect(out.org).equal('alice')
+        fin()
+      })
     })
 })
