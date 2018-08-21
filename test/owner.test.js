@@ -28,14 +28,14 @@ lab.test('happy', fin => {
       custom: {
         allow: {
           usr: 'alice',
-          org: 'alice'
+          org: 'wonderland'
         }
       }
     })
     .ready(function() {
       this.act('role:foo,add:bar', function(err, out) {
         expect(out.usr).equal('alice')
-        expect(out.org).equal('alice')
+        expect(out.org).equal('wonderland')
       })
     })
 
@@ -82,7 +82,7 @@ lab.test('happy', fin => {
       custom: {
         allow: {
           usr: 'alice',
-          org: 'alice'
+          org: 'wonderland'
         }
       }
     })
@@ -96,14 +96,14 @@ lab.test('happy', fin => {
       })
       this.act('role:foo,add:bar', function(err, out) {
         expect(out.usr).equal('alice')
-        expect(out.org).equal('alice')
+        expect(out.org).equal('wonderland')
       })
       this.act('role:foo,query:foo', function(err, query_out) {
         expect(query_out.length).equal(1)
 
         var query_out_data = query_out[0]
         expect(query_out_data.usr).equal('alice')
-        expect(query_out_data.org).equal('alice')
+        expect(query_out_data.org).equal('wonderland')
       })
       this.act('role:foo,query:bar', function(err, query_out) {
         expect(query_out.length).equal(1)
