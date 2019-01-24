@@ -26,7 +26,7 @@ lab.test('happy', fin => {
     })
     .delegate(null, {
       custom: {
-        allow: {
+        owner: {
           usr: 'alice',
           org: 'wonderland'
         }
@@ -36,9 +36,13 @@ lab.test('happy', fin => {
       this.act('role:foo,add:bar', function(err, out) {
         expect(out.usr).equal('alice')
         expect(out.org).equal('wonderland')
+        fin()
       })
     })
+})
 
+
+lab.test('customprops', fin => {
   Seneca()
     .test(fin)
     .use('entity')
@@ -46,20 +50,59 @@ lab.test('happy', fin => {
       this.make('core/act').save$(reply)
     })
     .use('..', {
+      usrprop: 'user_id',
+      orgprop: 'org_id',
+      usrref: 'user',
+      orgref: 'org',
+      ownerprop: 'principal',
+      ownerent: true,
       annotate: ['role:entity,cmd:save,base:core']
     })
     .delegate(null, {
       custom: {
-        allow: {}
+        principal: {
+          user: {id:'alice'},
+          org: {id:'wonderland'}
+        }
+      }
+    })
+    .ready(function() {
+      this.act('role:foo,add:bar', function(err, out) {
+        expect(out.user_id).equal('alice')
+        expect(out.org_id).equal('wonderland')
+        fin()
+      })
+    })
+})
+
+
+
+lab.test('empty-owner', fin => {  
+  Seneca()
+    .test(fin)
+    .use('entity')
+    .add('role:foo,add:bar', function(msg, reply) {
+      this.make('core/act').save$(reply)
+    })
+    .use('..', {
+      entity: true,
+      annotate: ['base:core']
+    })
+    .delegate(null, {
+      custom: {
+        owner: {}
       }
     })
     .ready(function() {
       this.act('role:foo,add:bar', function(err, out) {
         expect(out.usr).equal(undefined)
         expect(out.org).equal(undefined)
+        fin()
       })
     })
+})
 
+lab.test('multiple-actions', fin => {  
   Seneca()
     .test(fin)
     .use('entity')
@@ -73,14 +116,12 @@ lab.test('happy', fin => {
       this.make('core/act').list$({ usr: 'john', org: 'john' }, reply)
     })
     .use('..', {
-      annotate: [
-        'role:entity,cmd:save,base:core',
-        'role:entity,cmd:list,base:core'
-      ]
+      entity: true,
+      annotate: [{base:'core'}]
     })
     .delegate(null, {
       custom: {
-        allow: {
+        owner: {
           usr: 'alice',
           org: 'wonderland'
         }

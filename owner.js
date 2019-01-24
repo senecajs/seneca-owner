@@ -8,37 +8,76 @@ const Joi = Optioner.Joi
 const optioner = Optioner({
   entprop: Joi.string().default('ent'),
   qprop: Joi.string().default('q'),
+  ownerprop: Joi.string().default('owner'),
+
+  // on the ent
+  usrprop: Joi.string().default('usr'),
+  orgprop: Joi.string().default('org'),
+
+  // on the owner meta data
+  usrref: Joi.string().default('usr'),
+  orgref: Joi.string().default('org'),
+
+  // owner props (usr, org) are entities, resolve with owner[usrprop].id
+  ownerent: Joi.boolean().default(false),
+  
   annotate: Joi.array().required(),
-  allowprop: Joi.string().default('allow')
 })
 
 module.exports = function owner(options) {
   const seneca = this
   const opts = optioner.check(options)
-  const allowprop = opts.allowprop
+
+  const ownerprop = opts.ownerprop
   const entprop = opts.entprop
   const qprop = opts.qprop
-
+  const usrprop = opts.usrprop
+  const orgprop = opts.orgprop
+  const usrref = opts.usrref
+  const orgref = opts.orgref
+  const entity = !!opts.entity
+  
+  const annotate = []
   opts.annotate.forEach(function(msgpat) {
-    seneca.add(msgpat, function(msg, reply, meta) {
-      var usrdata = meta.custom[allowprop]
+    const msgpatobj = 'string' === typeof(msgpat) ? seneca.util.Jsonic(msgpat) :
+          msgpat 
+    if(entity) {
+      ['save','load','list','remove'].forEach(function(cmd) {
+        annotate.push(Object.assign({role:'entity',cmd:cmd},msgpatobj))
 
-      if (usrdata) {
+      })
+    }
+    else {
+      annotate.push(msgpatobj)
+    }
+  })
+
+  annotate.forEach(function(msgpat) {
+    seneca.add(msgpat, function(msg, reply, meta) {
+      var owner = meta.custom[ownerprop]
+
+      if (owner) {
+        var usr_id = !!opts.ownerent ?
+            (owner[usrref] && owner[usrref].id) : owner[usrref]
+        
+        var org_id = !!opts.ownerent ?
+            (owner[orgref] && owner[orgref].id) : owner[orgref]
+
         if (msg.cmd === 'list') {
           var q = msg[qprop]
-          if (!q.usr && usrdata.usr) {
-            q.usr = usrdata.usr
+          if (!q[usrprop] && usr_id) {
+            q[usrprop] = usr_id
           }
-          if (!q.org && usrdata.org) {
-            q.org = usrdata.org
+          if (!q[orgprop] && owner[orgref]) {
+            q[orgprop] = org_id
           }
         } else {
           var ent = msg[entprop]
-          if (!ent.usr && usrdata.usr) {
-            ent.usr = usrdata.usr
+          if (!ent[usrprop] && usr_id) {
+            ent[usrprop] = usr_id
           }
-          if (!ent.org && usrdata.org) {
-            ent.org = usrdata.org
+          if (!ent[orgprop] && owner[orgref]) {
+            ent[orgprop] = org_id
           }
         }
       }
