@@ -1,13 +1,15 @@
 {
   "name": "seneca-owner",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Seneca plugin to add user ownership annotations to entities.",
   "main": "owner.js",
   "scripts": {
     "test": "lab -P test -t 90 -I BigUint64Array,BigInt64Array,BigInt,URL,URLSearchParams",
     "prettier": "prettier --write --no-semi --single-quote *.js lib/*.js test/*.js",
     "coveralls": "lab -s -P test -r lcov | coveralls",
-    "clean": "rm -rf package-lock.json yarn.lock node_modules"
+    "clean-npm": "rm -rf node_modules package-lock.json",
+    "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
+    "repo-publish": "npm test && npm run repo-tag && npm publish"
   },
   "repository": {
     "type": "git",
