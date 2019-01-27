@@ -22,6 +22,8 @@ const optioner = Optioner({
   ownerent: Joi.boolean().default(false),
   
   annotate: Joi.array().required(),
+
+  msg_flag: Joi.string().default(null)
 })
 
 module.exports = function owner(options) {
@@ -29,6 +31,7 @@ module.exports = function owner(options) {
   const opts = optioner.check(options)
 
   const ownerprop = opts.ownerprop
+  const ownerent = opts.ownerent
   const entprop = opts.entprop
   const qprop = opts.qprop
   const usrprop = opts.usrprop
@@ -36,6 +39,7 @@ module.exports = function owner(options) {
   const usrref = opts.usrref
   const orgref = opts.orgref
   const entity = !!opts.entity
+  const msg_flag = opts.msg_flag
   
   const annotate = []
   opts.annotate.forEach(function(msgpat) {
@@ -55,12 +59,13 @@ module.exports = function owner(options) {
   annotate.forEach(function(msgpat) {
     seneca.add(msgpat, function(msg, reply, meta) {
       var owner = meta.custom[ownerprop]
-
-      if (owner) {
-        var usr_id = !!opts.ownerent ?
+      var valid_msg = msg_flag ? msg[msg_flag]: true
+            
+      if (owner && valid_msg) {
+        var usr_id = !!ownerent ?
             (owner[usrref] && owner[usrref].id) : owner[usrref]
         
-        var org_id = !!opts.ownerent ?
+        var org_id = !!ownerent ?
             (owner[orgref] && owner[orgref].id) : owner[orgref]
 
         if (msg.cmd === 'list') {
