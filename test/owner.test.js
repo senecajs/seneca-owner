@@ -41,7 +41,6 @@ lab.test('happy', fin => {
     })
 })
 
-
 lab.test('customprops', fin => {
   Seneca()
     .test(fin)
@@ -61,8 +60,8 @@ lab.test('customprops', fin => {
     .delegate(null, {
       custom: {
         principal: {
-          user: {id:'alice'},
-          org: {id:'wonderland'}
+          user: { id: 'alice' },
+          org: { id: 'wonderland' }
         }
       }
     })
@@ -75,9 +74,7 @@ lab.test('customprops', fin => {
     })
 })
 
-
-
-lab.test('empty-owner', fin => {  
+lab.test('empty-owner', fin => {
   Seneca()
     .test(fin)
     .use('entity')
@@ -102,7 +99,7 @@ lab.test('empty-owner', fin => {
     })
 })
 
-lab.test('multiple-actions', fin => {  
+lab.test('multiple-actions', fin => {
   Seneca()
     .test(fin)
     .use('entity')
@@ -117,7 +114,7 @@ lab.test('multiple-actions', fin => {
     })
     .use('..', {
       entity: true,
-      annotate: [{base:'core'}]
+      annotate: [{ base: 'core' }]
     })
     .delegate(null, {
       custom: {
@@ -168,6 +165,57 @@ lab.test('multiple-actions', fin => {
       this.act('role:foo,add:bar', function(err, out) {
         expect(out.usr).equal(undefined)
         fin()
+      })
+    })
+})
+
+lab.test('only-org', fin => {
+  Seneca()
+    .test(fin)
+    .use('entity')
+    .add('role:foo,add:bar', function(msg, reply) {
+      this.make('core/act').save$(reply)
+    })
+    .add('role:foo,get:bar', function(msg, reply) {
+      this.make('core/act').load$(msg.id, reply)
+    })
+    .use('..', {
+      entity: true,
+      org_only_flag: '__org_only__',
+      annotate: ['base:core']
+    })
+    .delegate(null, {
+      custom: {
+        owner: {
+          usr: 'alice',
+          org: 'wonderland'
+        }
+      }
+    })
+    .ready(function() {
+      var s = this.delegate({ __org_only__: true })
+
+      var s2 = this.delegate(
+        { __org_only__: true },
+        {
+          custom: {
+            owner: {
+              usr: 'bob',
+              org: 'wonderland'
+            }
+          }
+        }
+      )
+
+      s.act('role:foo,add:bar', function(err, out) {
+        expect(out.usr).equal(undefined)
+        expect(out.org).equal('wonderland')
+
+        s2.act('role:foo,get:bar', { id: out.id }, function(err, out) {
+          expect(out.usr).equal(undefined)
+          expect(out.org).equal('wonderland')
+          fin()
+        })
       })
     })
 })

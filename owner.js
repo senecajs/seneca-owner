@@ -20,10 +20,12 @@ const optioner = Optioner({
 
   // owner props (usr, org) are entities, resolve with owner[usrprop].id
   ownerent: Joi.boolean().default(false),
-  
+
   annotate: Joi.array().required(),
 
-  msg_flag: Joi.string().default(null)
+  msg_flag: Joi.string().default(null),
+
+  org_only_flag: Joi.string().default(null)
 })
 
 module.exports = function owner(options) {
@@ -40,18 +42,17 @@ module.exports = function owner(options) {
   const orgref = opts.orgref
   const entity = !!opts.entity
   const msg_flag = opts.msg_flag
-  
+  const org_only_flag = opts.org_only_flag
+
   const annotate = []
   opts.annotate.forEach(function(msgpat) {
-    const msgpatobj = 'string' === typeof(msgpat) ? seneca.util.Jsonic(msgpat) :
-          msgpat 
-    if(entity) {
-      ['save','load','list','remove'].forEach(function(cmd) {
-        annotate.push(Object.assign({role:'entity',cmd:cmd},msgpatobj))
-
+    const msgpatobj =
+      'string' === typeof msgpat ? seneca.util.Jsonic(msgpat) : msgpat
+    if (entity) {
+      ;['save', 'load', 'list', 'remove'].forEach(function(cmd) {
+        annotate.push(Object.assign({ role: 'entity', cmd: cmd }, msgpatobj))
       })
-    }
-    else {
+    } else {
       annotate.push(msgpatobj)
     }
   })
@@ -59,18 +60,20 @@ module.exports = function owner(options) {
   annotate.forEach(function(msgpat) {
     seneca.add(msgpat, function(msg, reply, meta) {
       var owner = meta.custom[ownerprop]
-      var valid_msg = msg_flag ? msg[msg_flag]: true
-            
+      var valid_msg = msg_flag ? msg[msg_flag] : true
+      var org_only = org_only_flag ? msg[org_only_flag] : false
       if (owner && valid_msg) {
-        var usr_id = !!ownerent ?
-            (owner[usrref] && owner[usrref].id) : owner[usrref]
-        
-        var org_id = !!ownerent ?
-            (owner[orgref] && owner[orgref].id) : owner[orgref]
+        var usr_id = !!ownerent
+          ? owner[usrref] && owner[usrref].id
+          : owner[usrref]
+
+        var org_id = !!ownerent
+          ? owner[orgref] && owner[orgref].id
+          : owner[orgref]
 
         if (msg.cmd === 'list') {
           var q = msg[qprop]
-          if (!q[usrprop] && usr_id) {
+          if (!org_only && !q[usrprop] && usr_id) {
             q[usrprop] = usr_id
           }
           if (!q[orgprop] && owner[orgref]) {
@@ -78,7 +81,7 @@ module.exports = function owner(options) {
           }
         } else {
           var ent = msg[entprop]
-          if (!ent[usrprop] && usr_id) {
+          if (!org_only && !ent[usrprop] && usr_id) {
             ent[usrprop] = usr_id
           }
           if (!ent[orgprop] && owner[orgref]) {
