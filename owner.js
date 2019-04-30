@@ -14,11 +14,10 @@ NEXT:
 
 */
 
-const Optioner = require('optioner')
+const Joi = require('joi')
 
-const Joi = Optioner.Joi
-
-const optioner = Optioner({
+module.exports = owner
+module.exports.defaults = {
   entprop: Joi.string().default('ent'),
   qprop: Joi.string().default('q'),
   ownerprop: Joi.string().default('owner'),
@@ -39,26 +38,26 @@ const optioner = Optioner({
   msg_flag: Joi.string().default(null),
 
   org_only_flag: Joi.string().default(null)
-})
+}
 
-module.exports = function owner(options) {
+
+function owner(options) {
   const seneca = this
-  const opts = optioner.check(options)
 
-  const ownerprop = opts.ownerprop
-  const ownerent = opts.ownerent
-  const entprop = opts.entprop
-  const qprop = opts.qprop
-  const usrprop = opts.usrprop
-  const orgprop = opts.orgprop
-  const usrref = opts.usrref
-  const orgref = opts.orgref
-  const entity = !!opts.entity
-  const msg_flag = opts.msg_flag
-  const org_only_flag = opts.org_only_flag
+  const ownerprop = options.ownerprop
+  const ownerent = options.ownerent
+  const entprop = options.entprop
+  const qprop = options.qprop
+  const usrprop = options.usrprop
+  const orgprop = options.orgprop
+  const usrref = options.usrref
+  const orgref = options.orgref
+  const entity = !!options.entity
+  const msg_flag = options.msg_flag
+  const org_only_flag = options.org_only_flag
 
   const annotate = []
-  opts.annotate.forEach(function(msgpat) {
+  options.annotate.forEach(function(msgpat) {
     const msgpatobj =
       'string' === typeof msgpat ? seneca.util.Jsonic(msgpat) : msgpat
     if (entity) {
