@@ -1,5 +1,18 @@
-/* Copyright (c) 2018 voxgig and other contributors, MIT License */
+/* Copyright (c) 2018-2019 voxgig and other contributors, MIT License */
 'use strict'
+
+/*
+
+NEXT: 
+- allow any combination of user or org
+- support update operations
+- leave existing owner prop alone
+- better flags via fixed meta.custom
+- seneca - allow per plugin setting of flags - make_act_delegate
+  - amend actdef after plugin def returns to add fixed args + meta
+  - demonstrate get of out jail possible
+
+*/
 
 const Optioner = require('optioner')
 

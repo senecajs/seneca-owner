@@ -30,13 +30,14 @@
     "optioner": "1.1.x"
   },
   "devDependencies": {
-    "seneca-plugin-validator": "0",
-    "prettier": "1",
-    "seneca": "github:senecajs/seneca",
-    "seneca-entity": "2",
     "code": "4",
-    "coveralls": "3",
+    "coveralls": "^3.0.3",
     "joi": "12",
-    "lab": "14"
+    "lab": "14",
+    "prettier": "^1.17.0",
+    "seneca": "^3.8.4",
+    "seneca-entity": "^3.3.0",
+    "seneca-plugin-validator": "0",
+    "seneca-promisify": "^0.7.1"
   }
 }
