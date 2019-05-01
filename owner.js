@@ -18,9 +18,19 @@ const Joi = require('joi')
 
 module.exports = owner
 module.exports.defaults = {
+  default_spec: Joi.object().default({
+    write: {
+      usr: true,
+      org: true
+    }
+  }),
+  
+  specprop: Joi.string().default('sys-owner-spec'),
+  ownerprop: Joi.string().default('sys-owner'),
+  
   entprop: Joi.string().default('ent'),
   qprop: Joi.string().default('q'),
-  ownerprop: Joi.string().default('owner'),
+
 
   // on the ent
   usrprop: Joi.string().default('usr'),
@@ -44,6 +54,10 @@ module.exports.defaults = {
 function owner(options) {
   const seneca = this
 
+  intern.deepextend = seneca.util.deepextend
+  intern.default_spec = options.default_spec
+  
+  const specP = options.specprop
   const ownerprop = options.ownerprop
   const ownerent = options.ownerent
   const entprop = options.entprop
@@ -71,8 +85,13 @@ function owner(options) {
 
   annotate.forEach(function(msgpat) {
     seneca.add(msgpat, function(msg, reply, meta) {
+      var spec = meta.custom[specP] || options.default_spec
       var owner = meta.custom[ownerprop]
+
       var valid_msg = msg_flag ? msg[msg_flag] : true
+
+      console.log('SPEC', spec, meta.custom)
+      
       var org_only = org_only_flag ? msg[org_only_flag] : false
       if (owner && valid_msg) {
         var usr_id = !!ownerent
@@ -83,14 +102,24 @@ function owner(options) {
           ? owner[orgref] && owner[orgref].id
           : owner[orgref]
 
-        if (msg.cmd === 'list') {
+        if ('list' === msg.cmd) {
           var q = msg[qprop]
           if (!org_only && !q[usrprop] && usr_id) {
             q[usrprop] = usr_id
           }
-          if (!q[orgprop] && owner[orgref]) {
+          if (!q[orgprop] && org_id) {
             q[orgprop] = org_id
           }
+        } else if('save' === msg.cmd) {
+          var ent = msg[entprop]
+
+          if (spec.write.usr && !ent[usrprop] && usr_id) {
+            ent[usrprop] = usr_id
+          }
+          if (spec.write.org && !ent[orgprop] && org_id) {
+            ent[orgprop] = org_id
+          }
+
         } else {
           var ent = msg[entprop]
           if (!org_only && !ent[usrprop] && usr_id) {
@@ -105,6 +134,18 @@ function owner(options) {
       this.prior(msg, reply)
     })
   })
+
+  return {
+    exports: {
+      make_spec: intern.make_spec
+    }
+  }
 }
 
-const intern = (module.exports.intern = {})
+const intern = owner.intern = {
+  default_spec: null,
+  deepextend: null,
+  make_spec: function(spec) {
+    return intern.deepextend({}, intern.default_spec, spec)
+  }
+}

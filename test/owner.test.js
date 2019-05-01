@@ -14,6 +14,100 @@ const Plugin = require('..')
 
 lab.test('validate', PluginValidator(Plugin, module))
 
+function make_addbar_instance(fin,spec) {
+  spec = spec || {}
+  return Seneca({legacy:{transport:false}})
+    .test(fin)
+    .use('entity')
+    .use(Plugin, {
+      annotate: ['role:entity,cmd:save,base:core']
+    })
+    .ready(function() {
+      var make_spec = this.export('owner/make_spec')
+      var full_spec = make_spec(spec)
+      this.add(
+        'role:foo,add:bar',
+        {custom$:{'sys-owner-spec':full_spec}},
+        function(msg, reply) {
+          this.make('core/bar').save$(reply)
+        })
+    })
+    .delegate(null, {
+      custom: {
+        'sys-owner': {
+          usr: 'alice',
+          org: 'wonderland'
+        }
+      }
+    })
+}
+
+
+lab.test('happy', fin => {
+  make_addbar_instance(fin)
+    .ready(function() {
+      this.act('role:foo,add:bar', function(err, out) {
+        expect(out.usr).equal('alice')
+        expect(out.org).equal('wonderland')
+        fin()
+      })
+    })
+})
+
+lab.test('spec-write-no-org', fin => {
+  var spec = {write:{org:false}}
+  make_addbar_instance(fin,spec)
+    .ready(function() {
+      this.act('role:foo,add:bar', function(err, out) {
+        expect(out.usr).equal('alice')
+        expect(out.org).not.exists()
+        fin()
+      })
+    })
+})
+
+lab.test('spec-write-no-usr', fin => {
+  var spec = {write:{usr:false}}
+  make_addbar_instance(fin,spec)
+    .ready(function() {
+      this.act('role:foo,add:bar', function(err, out) {
+        expect(out.usr).not.exists()
+        expect(out.org).equal('wonderland')
+        fin()
+      })
+    })
+})
+
+lab.test('spec-write-no-usr-org', fin => {
+  var spec = {write:{usr:false,org:false}}
+  make_addbar_instance(fin,spec)
+    .ready(function() {
+      this.act('role:foo,add:bar', function(err, out) {
+        expect(out.usr).not.exists()
+        expect(out.org).not.exists()
+        fin()
+      })
+    })
+})
+
+
+lab.test('intern', fin => {
+  Seneca({legacy:{transport:false}})
+    .test(fin)
+    .use(Plugin,{annotate:[]})
+    .ready(function() {
+      expect(Plugin.intern.default_spec).exists()
+      expect(Plugin.intern.deepextend).exists()
+
+      var spec0 = Plugin.intern.make_spec({write:{org:false}})
+      expect(spec0).contains({ write: { usr: true, org: false } })
+
+      fin()
+    })
+})
+
+
+/*
 lab.test('happy', fin => {
   Seneca()
     .test(fin)
@@ -219,3 +313,4 @@ lab.test('only-org', fin => {
       })
     })
 })
+*/
