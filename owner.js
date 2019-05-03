@@ -20,7 +20,7 @@ module.exports = owner
 module.exports.defaults = {
   default_spec: Joi.object().default({
     active: true,
-    fields: ['usr','org'],
+    fields: [],
     read: { // default true
       //usr: true,
       //org: true
@@ -40,13 +40,10 @@ module.exports.defaults = {
   }),
   
   specprop: Joi.string().default('sys-owner-spec'),
-
   ownerprop: Joi.string().default('sys-owner'),
-  caseprop: Joi.string().default('case'),
-  
+  caseprop: Joi.string().default('case$'),
   entprop: Joi.string().default('ent'),
-  qprop: Joi.string().default('q'),
-
+  queryprop: Joi.string().default('q'),
 
   // on the ent
   usrprop: Joi.string().default('usr'),
@@ -55,7 +52,7 @@ module.exports.defaults = {
   // on the owner meta data
   usrref: Joi.string().default('usr'),
   orgref: Joi.string().default('org'),
-
+  
   annotate: Joi.array().required()
 }
 
@@ -89,7 +86,7 @@ function owner(options) {
   const caseP = options.caseprop
   const ownerent = options.ownerent
   const entprop = options.entprop
-  const qprop = options.qprop
+  const queryprop = options.queryprop
   const usrprop = options.usrprop
   const orgprop = options.orgprop
   const usrref = options.usrref
@@ -97,19 +94,9 @@ function owner(options) {
   const entity = !!options.entity
 
 
-  const annotate = []
-  options.annotate.forEach(function(msgpat) {
-    const msgpatobj =
-      'string' === typeof msgpat ? seneca.util.Jsonic(msgpat) : msgpat
-    if (entity) {
-      ;['save', 'load', 'list', 'remove'].forEach(function(cmd) {
-        annotate.push(Object.assign({ role: 'entity', cmd: cmd }, msgpatobj))
-      })
-    } else {
-      annotate.push(msgpatobj)
-    }
-  })
+  const annotate = options.annotate.map(p => seneca.util.Jsonic(p))
 
+  
   // TODO: should do a seneca.find and annotate those
   annotate.forEach(function(msgpat) {
     seneca.add(msgpat, function(msg, reply, meta) {
@@ -120,6 +107,7 @@ function owner(options) {
 
       if(owner && casemap[owner[caseP]]) {
         spec = casemap[owner[caseP]](self.util.deepextend(spec),owner)
+        if(null == spec) return self.fail('no-spec', {case:caseP})
       }
 
       /*
@@ -129,51 +117,64 @@ function owner(options) {
       */
       
       if (spec.active) {
-        var usr_id = owner.usr
-        var org_id = owner.org
+        //var usr_id = owner.usr
+        //var org_id = owner.org
         
-        if ('list' === msg.cmd || 'load' === msg.cmd || 'remove' === msg.cmd ) {
-          intern.refine_query(msg[qprop],spec,owner)          
+        if ('list' === msg.cmd || 'remove' === msg.cmd ) {
+          intern.refine_query(msg,queryprop,spec,owner)          
           return self.prior(msg, reply)
         }
         else if ('load' === msg.cmd ) {
           // only change query if not loading by id - preserves caching!
-          if(null == msg[qprop].id) {
-            intern.refine_query(msg[qprop],spec,owner)
+          if(null == msg[queryprop].id) {
+            intern.refine_query(msg,queryprop,spec,owner)
           }
 
-          return self.prior(msg, function(err, out) {
-            reply(err || (
-              null == out ? null : (
-                null == msg[qprop].id ? out : (
-                  ((spec.read.usr && (out[usrprop] === usr_id)) &&
-                   (spec.read.org && (out[orgprop] === org_id)))
-                    ? out : null 
-                )
-              )
-            ))
+          self.prior(msg, function(err, out) {
+            //console.log('LOAD PRIOR', err, out)
+            
+            if(err) return reply(err)
+            if(null == out) return reply()
+
+            // was not an id-based query, so refinement already made
+            if(null == msg[queryprop].id) return reply(out)
+
+            var pass = true
+            spec.fields.forEach(function(f){
+              // need this field to match owner for ent to be readable
+              if(spec.read[f]) {
+                pass = pass && (out[f] === owner[f])
+              }
+            })
+
+            // console.log('PASS', pass, spec, owner)
+            
+            reply(pass ? out : null)
           })
         }
         else if('save' === msg.cmd ) {
           var ent = msg[entprop]
 
-          // only set usr and org props if not already set
-          if (spec.inject.usr && !ent[usrprop] && usr_id) {
-            ent[usrprop] = usr_id
-          }
-          if (spec.inject.org && !ent[orgprop] && org_id) {
-            ent[orgprop] = org_id
-          }
-
+          // only set fields props if not already set
+          spec.fields.forEach(f=>{
+            if (spec.inject[f] && null == ent[f] && null != owner[f]) {
+              ent[f] = owner[f]
+            }
+          })
+          
           // creating
           if(null == ent.id) {
-            if(spec.write.usr && ent[usrprop] !== usr_id && null != ent[usrprop] ) {
-              self.fail('create-not-allowed', {why:'not-usr'})
-            }
 
-            if(spec.write.org && ent[orgprop] !== org_id && null != ent[orgprop] ) {
-              self.fail('create-not-allowed', {why:'not-org'})
-            }
+            spec.fields.forEach(f=>{
+              if(spec.write[f] && ent[f] !== owner[f] && null != ent[f] ) {
+                self.fail('create-not-allowed', {
+                  why:'field-mismatch-on-create',
+                  field:f,
+                  ent_val:ent[f],
+                  owner_val:owner[f]
+                })
+              }
+            })
 
             return self.prior(msg, reply)
           }
@@ -186,28 +187,26 @@ function owner(options) {
               if(null == oldent) return this.fail('save-not-found',
                                                   {entity:ent.entity$,id:ent.id})
               
-              if (spec.write.usr && oldent[usrprop] !== usr_id) {
-                self.fail('update-not-allowed', {why:'not-usr'})
-              }
-            
-              if (spec.write.org && oldent[orgprop] !== org_id) {
-                self.fail('update-not-allowed', {why:'not-org'})
-              }
 
-              if (spec.alter.usr && usr_id) {
-                ent[usrprop] = usr_id
-              }
-              else {
-                ent[usrprop] = oldent[usrprop]
-              }
+              spec.fields.forEach(f=>{
+                if (spec.write[f] && oldent[f] !== owner[f]) {
+                  self.fail('update-not-allowed', {
+                    why:'field-mismatch-on-update',
+                    field:f,
+                    oldent_val:oldent[f],
+                    owner_val:owner[f]
+                  })
+                }
 
-              if (spec.alter.org && org_id) {
-                ent[orgprop] = org_id
-              }
-              else {
-                ent[orgprop] = oldent[orgprop]
-              }
-
+                // only change field if alter allowed
+                if (spec.alter[f] && null != owner[f]) {
+                  ent[f] = owner[f]
+                }
+                else {
+                  ent[f] = oldent[f]
+                }
+              })
+              
               return self.prior(msg, reply)
             })
           }
@@ -232,18 +231,28 @@ const intern = owner.intern = {
 
   make_spec: function(inspec) {
     const spec = intern.deepextend({}, intern.default_spec, inspec)
+    spec.fields = [...new Set(spec.fields.concat(['usr','org']))]
+
     spec.fields.forEach(function(f) {
       spec.write[f] = null == spec.write[f] ? true : spec.write[f]
       spec.read[f] = null == spec.read[f] ? true : spec.read[f]
       spec.inject[f] = null == spec.inject[f] ? true : spec.inject[f]
     })
+
+    ;['write','read','inject','alter'].forEach(m => {
+      spec.fields = [...new Set(spec.fields.concat(Object.keys(spec[m])))]
+    })
+
+    // console.log('SPEC', spec)
+    
     return spec
   },
 
-  refine_query: function(q,spec,owner) {
+  refine_query: function(msg,queryprop,spec,owner) {
+    msg[queryprop] = msg[queryprop] || {}
     spec.fields.forEach(function(f){
       if (spec.read[f]) {
-        q[f] = owner[f]
+        msg[queryprop][f] = owner[f]
       }
     })
   }
