@@ -26,16 +26,14 @@
     "README.md",
     "owner.js"
   ],
-  "dependencies": {
-    "optioner": "1.1.x"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "code": "4",
+    "code": "^5.2.4",
     "coveralls": "^3.0.3",
-    "joi": "12",
-    "lab": "14",
+    "joi": "^14.3.1",
+    "lab": "^18.0.2",
     "prettier": "^1.17.0",
-    "seneca": "^3.8.4",
+    "seneca": "senecajs/seneca",
     "seneca-entity": "^3.3.0",
     "seneca-plugin-validator": "0",
     "seneca-promisify": "^0.7.1"
