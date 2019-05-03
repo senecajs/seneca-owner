@@ -19,14 +19,30 @@ const Joi = require('joi')
 module.exports = owner
 module.exports.defaults = {
   default_spec: Joi.object().default({
-    write: {
-      usr: true,
-      org: true
+    active: true,
+    fields: ['usr','org'],
+    read: { // default true
+      //usr: true,
+      //org: true
+    },
+    write: { // default true
+      //usr: true,
+      //org: true
+    },
+    inject: { // default true
+      //usr: true,
+      //org: true
+    },
+    alter: { // default false
+      //usr: false,
+      //org: false
     }
   }),
   
   specprop: Joi.string().default('sys-owner-spec'),
+
   ownerprop: Joi.string().default('sys-owner'),
+  caseprop: Joi.string().default('case'),
   
   entprop: Joi.string().default('ent'),
   qprop: Joi.string().default('q'),
@@ -40,14 +56,7 @@ module.exports.defaults = {
   usrref: Joi.string().default('usr'),
   orgref: Joi.string().default('org'),
 
-  // owner props (usr, org) are entities, resolve with owner[usrprop].id
-  ownerent: Joi.boolean().default(false),
-
-  annotate: Joi.array().required(),
-
-  msg_flag: Joi.string().default(null),
-
-  org_only_flag: Joi.string().default(null)
+  annotate: Joi.array().required()
 }
 
 
@@ -55,10 +64,29 @@ function owner(options) {
   const seneca = this
 
   intern.deepextend = seneca.util.deepextend
-  intern.default_spec = options.default_spec
+  intern.default_spec = intern.make_spec(options.default_spec)
+
+  const casemap = {}
+
+  this
+    .fix('sys:owner')
+    .add('hook:case', hook_case)
+
+  function hook_case(msg, reply) {
+    var kase = msg.case
+    var modifier = msg.modifier
+
+    if('string' === typeof(kase) && 'function' === typeof(modifier)) {
+      casemap[kase] = modifier
+    }
+    
+    reply()
+  }
+  
   
   const specP = options.specprop
   const ownerprop = options.ownerprop
+  const caseP = options.caseprop
   const ownerent = options.ownerent
   const entprop = options.entprop
   const qprop = options.qprop
@@ -67,8 +95,7 @@ function owner(options) {
   const usrref = options.usrref
   const orgref = options.orgref
   const entity = !!options.entity
-  const msg_flag = options.msg_flag
-  const org_only_flag = options.org_only_flag
+
 
   const annotate = []
   options.annotate.forEach(function(msgpat) {
@@ -83,55 +110,112 @@ function owner(options) {
     }
   })
 
+  // TODO: should do a seneca.find and annotate those
   annotate.forEach(function(msgpat) {
     seneca.add(msgpat, function(msg, reply, meta) {
+      var self = this
+      
       var spec = meta.custom[specP] || options.default_spec
       var owner = meta.custom[ownerprop]
 
-      var valid_msg = msg_flag ? msg[msg_flag] : true
+      if(owner && casemap[owner[caseP]]) {
+        spec = casemap[owner[caseP]](self.util.deepextend(spec),owner)
+      }
 
-      console.log('SPEC', spec, meta.custom)
+      /*
+      console.log('MSG', msg)
+      console.log('SPEC', spec)
+      console.log('OWNER', owner)
+      */
       
-      var org_only = org_only_flag ? msg[org_only_flag] : false
-      if (owner && valid_msg) {
-        var usr_id = !!ownerent
-          ? owner[usrref] && owner[usrref].id
-          : owner[usrref]
-
-        var org_id = !!ownerent
-          ? owner[orgref] && owner[orgref].id
-          : owner[orgref]
-
-        if ('list' === msg.cmd) {
-          var q = msg[qprop]
-          if (!org_only && !q[usrprop] && usr_id) {
-            q[usrprop] = usr_id
+      if (spec.active) {
+        var usr_id = owner.usr
+        var org_id = owner.org
+        
+        if ('list' === msg.cmd || 'load' === msg.cmd || 'remove' === msg.cmd ) {
+          intern.refine_query(msg[qprop],spec,owner)          
+          return self.prior(msg, reply)
+        }
+        else if ('load' === msg.cmd ) {
+          // only change query if not loading by id - preserves caching!
+          if(null == msg[qprop].id) {
+            intern.refine_query(msg[qprop],spec,owner)
           }
-          if (!q[orgprop] && org_id) {
-            q[orgprop] = org_id
-          }
-        } else if('save' === msg.cmd) {
+
+          return self.prior(msg, function(err, out) {
+            reply(err || (
+              null == out ? null : (
+                null == msg[qprop].id ? out : (
+                  ((spec.read.usr && (out[usrprop] === usr_id)) &&
+                   (spec.read.org && (out[orgprop] === org_id)))
+                    ? out : null 
+                )
+              )
+            ))
+          })
+        }
+        else if('save' === msg.cmd ) {
           var ent = msg[entprop]
 
-          if (spec.write.usr && !ent[usrprop] && usr_id) {
+          // only set usr and org props if not already set
+          if (spec.inject.usr && !ent[usrprop] && usr_id) {
             ent[usrprop] = usr_id
           }
-          if (spec.write.org && !ent[orgprop] && org_id) {
+          if (spec.inject.org && !ent[orgprop] && org_id) {
             ent[orgprop] = org_id
           }
 
-        } else {
-          var ent = msg[entprop]
-          if (!org_only && !ent[usrprop] && usr_id) {
-            ent[usrprop] = usr_id
+          // creating
+          if(null == ent.id) {
+            if(spec.write.usr && ent[usrprop] !== usr_id && null != ent[usrprop] ) {
+              self.fail('create-not-allowed', {why:'not-usr'})
+            }
+
+            if(spec.write.org && ent[orgprop] !== org_id && null != ent[orgprop] ) {
+              self.fail('create-not-allowed', {why:'not-org'})
+            }
+
+            return self.prior(msg, reply)
           }
-          if (!ent[orgprop] && owner[orgref]) {
-            ent[orgprop] = org_id
+
+          // updating
+          else {
+            // TODO: seneca entity update would really help there!
+            self.make(ent.entity$).load$(ent.id, function(err, oldent) {
+              if(err) return this.fail(err)
+              if(null == oldent) return this.fail('save-not-found',
+                                                  {entity:ent.entity$,id:ent.id})
+              
+              if (spec.write.usr && oldent[usrprop] !== usr_id) {
+                self.fail('update-not-allowed', {why:'not-usr'})
+              }
+            
+              if (spec.write.org && oldent[orgprop] !== org_id) {
+                self.fail('update-not-allowed', {why:'not-org'})
+              }
+
+              if (spec.alter.usr && usr_id) {
+                ent[usrprop] = usr_id
+              }
+              else {
+                ent[usrprop] = oldent[usrprop]
+              }
+
+              if (spec.alter.org && org_id) {
+                ent[orgprop] = org_id
+              }
+              else {
+                ent[orgprop] = oldent[orgprop]
+              }
+
+              return self.prior(msg, reply)
+            })
           }
         }
       }
-
-      this.prior(msg, reply)
+      else {
+        return self.prior(msg, reply)
+      }
     })
   })
 
@@ -145,7 +229,22 @@ function owner(options) {
 const intern = owner.intern = {
   default_spec: null,
   deepextend: null,
-  make_spec: function(spec) {
-    return intern.deepextend({}, intern.default_spec, spec)
+
+  make_spec: function(inspec) {
+    const spec = intern.deepextend({}, intern.default_spec, inspec)
+    spec.fields.forEach(function(f) {
+      spec.write[f] = null == spec.write[f] ? true : spec.write[f]
+      spec.read[f] = null == spec.read[f] ? true : spec.read[f]
+      spec.inject[f] = null == spec.inject[f] ? true : spec.inject[f]
+    })
+    return spec
+  },
+
+  refine_query: function(q,spec,owner) {
+    spec.fields.forEach(function(f){
+      if (spec.read[f]) {
+        q[f] = owner[f]
+      }
+    })
   }
 }

@@ -14,23 +14,57 @@ const Plugin = require('..')
 
 lab.test('validate', PluginValidator(Plugin, module))
 
-function make_addbar_instance(fin,spec) {
+function make_bar_instance(fin,spec) {
   spec = spec || {}
   return Seneca({legacy:{transport:false}})
     .test(fin)
     .use('entity')
     .use(Plugin, {
-      annotate: ['role:entity,cmd:save,base:core']
+      annotate: [
+        'role:entity,cmd:save,base:core',
+        'role:entity,cmd:load,base:core',
+        'role:entity,cmd:list,base:core',
+        'role:entity,cmd:remove,base:core',
+      ]
     })
     .ready(function() {
       var make_spec = this.export('owner/make_spec')
       var full_spec = make_spec(spec)
-      this.add(
-        'role:foo,add:bar',
-        {custom$:{'sys-owner-spec':full_spec}},
-        function(msg, reply) {
-          this.make('core/bar').save$(reply)
-        })
+
+      this.act('sys:owner,hook:case,case:admin',{
+        modifier: function(spec, owner) {
+          if('cathy' === owner.usr) {
+            spec.read.usr = false
+            spec.write.usr = false
+          }
+          return spec
+        }
+      })
+      
+      this
+        .add(
+          'role:foo,add:bar',
+          {custom$:{'sys-owner-spec':full_spec}},
+          function(msg, reply) {
+            this.make('core/bar',Object.assign({x:Math.random()},msg.data))
+              .save$(reply)
+          })
+
+      this
+        .fix('role:foo',null,{'sys-owner-spec':full_spec})
+        .add(
+          'load:bar',
+          function(msg, reply) {
+            this.make('core/bar').load$(msg.id, reply)
+          })
+        .add(
+          'update:bar',
+          function(msg, reply) {
+            this.make('core/bar').load$(msg.id, function(err, out) {
+              if(err) return;
+              out.data$(msg.data).save$(reply)
+            })
+          })
     })
     .delegate(null, {
       custom: {
@@ -42,9 +76,8 @@ function make_addbar_instance(fin,spec) {
     })
 }
 
-
 lab.test('happy', fin => {
-  make_addbar_instance(fin)
+  make_bar_instance(fin)
     .ready(function() {
       this.act('role:foo,add:bar', function(err, out) {
         expect(out.usr).equal('alice')
@@ -54,11 +87,10 @@ lab.test('happy', fin => {
     })
 })
 
-lab.test('spec-write-no-org', fin => {
-  var spec = {write:{org:false}}
-  make_addbar_instance(fin,spec)
-    .ready(function() {
-      this.act('role:foo,add:bar', function(err, out) {
+lab.test('spec-inject-no-org', fin => {
+  var spec = {inject:{org:false}}
+  make_bar_instance(fin,spec)
+    .ready(function() {      this.act('role:foo,add:bar', function(err, out) {
         expect(out.usr).equal('alice')
         expect(out.org).not.exists()
         fin()
@@ -66,9 +98,98 @@ lab.test('spec-write-no-org', fin => {
     })
 })
 
-lab.test('spec-write-no-usr', fin => {
-  var spec = {write:{usr:false}}
-  make_addbar_instance(fin,spec)
+lab.test('spec-load-basic', fin => {
+  make_bar_instance(fin)
+    .ready(function() {
+      this.act('role:foo,add:bar', function(err, out) {
+        this.act('role:foo,load:bar', {id:out.id}, function(err, out) {
+          expect(out.usr).equal('alice')
+          expect(out.org).equal('wonderland')
+
+          var bob_instance = this.root.delegate(null,{custom:{
+            'sys-owner': {
+              usr: 'bob',
+              org: 'wonderland'
+            }
+          }})
+
+          // bob can't read alice owned entity, even in same org
+          bob_instance.act('role:foo,load:bar', {id:out.id}, function(err, out) {
+            expect(out).not.exists()
+            fin()
+          })
+        })
+      })
+    })
+})
+
+lab.test('spec-load-org', fin => {
+  make_bar_instance(fin,{read:{usr:false},write:{usr:false}})
+    .ready(function() {
+      this.act('role:foo,add:bar', {data:{w:1}}, function(err, out) {
+        this.act('role:foo,load:bar', {id:out.id}, function(err, out) {
+          expect(out.usr).equal('alice')
+          expect(out.org).equal('wonderland')
+
+          var bob_instance = this.root.delegate(null,{custom:{
+            'sys-owner': {
+              usr: 'bob',
+              org: 'wonderland'
+            }
+          }})
+
+          // bob can read alice owned entity, in same org
+          bob_instance.act('role:foo,load:bar', {id:out.id}, function(err, out) {
+            expect(out.usr).equal('alice')
+            expect(out.org).equal('wonderland')
+
+            // can't change ownership
+            this.act('role:foo,update:bar',{id:out.id,data:{w:2,usr:'qaz'}},
+                     function(err, out) {
+                       expect(out.usr).equal('alice')
+                       expect(out.org).equal('wonderland')
+                       fin()
+                     })
+          })
+        })
+      })
+    })
+})
+
+
+lab.test('spec-load-admin', fin => {
+  make_bar_instance(fin)
+    .ready(function() {
+      this.act('role:foo,add:bar', function(err, out) {
+        this.act('role:foo,load:bar', {id:out.id}, function(err, out) {
+          expect(out.usr).equal('alice')
+          expect(out.org).equal('wonderland')
+
+          var admin_instance = this.root.delegate(null,{custom:{
+            'sys-owner': {
+              usr: 'cathy',
+              org: 'wonderland',
+              case: 'admin'
+            }
+          }})
+
+          // admin *can* read alice owned entity, in same org
+          admin_instance.act('role:foo,load:bar', {y:1,id:out.id}, function(err, out) {
+            expect(out).exists()
+            expect(out.usr).equal('alice')
+            expect(out.org).equal('wonderland')
+            fin()
+          })
+        })
+      })
+    })
+})
+
+
+
+lab.test('spec-inject-no-usr', fin => {
+  var spec = {inject:{usr:false}}
+  make_bar_instance(fin,spec)
     .ready(function() {
       this.act('role:foo,add:bar', function(err, out) {
         expect(out.usr).not.exists()
@@ -78,9 +199,9 @@ lab.test('spec-write-no-usr', fin => {
     })
 })
 
-lab.test('spec-write-no-usr-org', fin => {
-  var spec = {write:{usr:false,org:false}}
-  make_addbar_instance(fin,spec)
+lab.test('spec-inject-no-usr-org', fin => {
+  var spec = {inject:{usr:false,org:false}}
+  make_bar_instance(fin,spec)
     .ready(function() {
       this.act('role:foo,add:bar', function(err, out) {
         expect(out.usr).not.exists()
@@ -107,34 +228,8 @@ lab.test('intern', fin => {
 })
 
 
-/*
-lab.test('happy', fin => {
-  Seneca()
-    .test(fin)
-    .use('entity')
-    .add('role:foo,add:bar', function(msg, reply) {
-      this.make('core/act').save$(reply)
-    })
-    .use('..', {
-      annotate: ['role:entity,cmd:save,base:core']
-    })
-    .delegate(null, {
-      custom: {
-        owner: {
-          usr: 'alice',
-          org: 'wonderland'
-        }
-      }
-    })
-    .ready(function() {
-      this.act('role:foo,add:bar', function(err, out) {
-        expect(out.usr).equal('alice')
-        expect(out.org).equal('wonderland')
-        fin()
-      })
-    })
-})
 
+/*
 lab.test('customprops', fin => {
   Seneca()
     .test(fin)
@@ -167,6 +262,7 @@ lab.test('customprops', fin => {
       })
     })
 })
+*/
 
 lab.test('empty-owner', fin => {
   Seneca()
@@ -181,7 +277,7 @@ lab.test('empty-owner', fin => {
     })
     .delegate(null, {
       custom: {
-        owner: {}
+        'sys-owner': {}
       }
     })
     .ready(function() {
@@ -193,6 +289,7 @@ lab.test('empty-owner', fin => {
     })
 })
 
+/*
 lab.test('multiple-actions', fin => {
   Seneca()
     .test(fin)
@@ -212,7 +309,7 @@ lab.test('multiple-actions', fin => {
     })
     .delegate(null, {
       custom: {
-        owner: {
+        'sys-owner': {
           usr: 'alice',
           org: 'wonderland'
         }
@@ -259,57 +356,6 @@ lab.test('multiple-actions', fin => {
       this.act('role:foo,add:bar', function(err, out) {
         expect(out.usr).equal(undefined)
         fin()
-      })
-    })
-})
-
-lab.test('only-org', fin => {
-  Seneca()
-    .test(fin)
-    .use('entity')
-    .add('role:foo,add:bar', function(msg, reply) {
-      this.make('core/act').save$(reply)
-    })
-    .add('role:foo,get:bar', function(msg, reply) {
-      this.make('core/act').load$(msg.id, reply)
-    })
-    .use('..', {
-      entity: true,
-      org_only_flag: '__org_only__',
-      annotate: ['base:core']
-    })
-    .delegate(null, {
-      custom: {
-        owner: {
-          usr: 'alice',
-          org: 'wonderland'
-        }
-      }
-    })
-    .ready(function() {
-      var s = this.delegate({ __org_only__: true })
-
-      var s2 = this.delegate(
-        { __org_only__: true },
-        {
-          custom: {
-            owner: {
-              usr: 'bob',
-              org: 'wonderland'
-            }
-          }
-        }
-      )
-
-      s.act('role:foo,add:bar', function(err, out) {
-        expect(out.usr).equal(undefined)
-        expect(out.org).equal('wonderland')
-
-        s2.act('role:foo,get:bar', { id: out.id }, function(err, out) {
-          expect(out.usr).equal(undefined)
-          expect(out.org).equal('wonderland')
-          fin()
-        })
       })
     })
 })
