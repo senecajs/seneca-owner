@@ -43,17 +43,9 @@ module.exports.defaults = {
   ownerprop: Joi.string().default('sys-owner'),
   caseprop: Joi.string().default('case$'),
   entprop: Joi.string().default('ent'),
-  queryprop: Joi.string().default('q'),
-
-  // on the ent
-  usrprop: Joi.string().default('usr'),
-  orgprop: Joi.string().default('org'),
-
-  // on the owner meta data
-  usrref: Joi.string().default('usr'),
-  orgref: Joi.string().default('org'),
-  
-  annotate: Joi.array().required()
+  queryprop: Joi.string().default('q'),  
+  annotate: Joi.array().default([]),
+  fields: Joi.array().default([])
 }
 
 
@@ -61,6 +53,8 @@ function owner(options) {
   const seneca = this
 
   intern.deepextend = seneca.util.deepextend
+
+  options.default_spec.fields = [...new Set(options.default_spec.fields.concat(options.fields))]
   intern.default_spec = intern.make_spec(options.default_spec)
 
   const casemap = {}
@@ -69,12 +63,14 @@ function owner(options) {
     .fix('sys:owner')
     .add('hook:case', hook_case)
 
+
+  // TODO: allow multiple ordered cases
   function hook_case(msg, reply) {
     var kase = msg.case
-    var modifier = msg.modifier
+    var modifiers = msg.modifiers
 
-    if('string' === typeof(kase) && 'function' === typeof(modifier)) {
-      casemap[kase] = modifier
+    if('string' === typeof(kase) && 'object' === typeof(modifiers)) {
+      casemap[kase] = modifiers
     }
     
     reply()
@@ -99,39 +95,45 @@ function owner(options) {
   
   // TODO: should do a seneca.find and annotate those
   annotate.forEach(function(msgpat) {
-    seneca.add(msgpat, function(msg, reply, meta) {
+    var owner = function owner(msg, reply, meta) {
       var self = this
       
-      var spec = meta.custom[specP] || options.default_spec
+      var spec = self.util.deepextend(meta.custom[specP] || intern.default_spec)
       var owner = meta.custom[ownerprop]
 
+      var modifiers = {}
       if(owner && casemap[owner[caseP]]) {
-        spec = casemap[owner[caseP]](self.util.deepextend(spec),owner)
-        if(null == spec) return self.fail('no-spec', {case:caseP})
+        //spec = casemap[owner[caseP]](self.util.deepextend(spec),owner,msg)
+        //if(null == spec) return self.fail('no-spec', {case:caseP})
+
+        modifiers = casemap[owner[caseP]]
       }
 
-      /*
-      console.log('MSG', msg)
-      console.log('SPEC', spec)
-      console.log('OWNER', owner)
-      */
+      if(modifiers.query) {
+        spec = modifiers.query(spec,owner,msg)
+      }
+      
+
+      
+      // console.log('MSG', msg)
+      // console.log('SPEC', spec)
+      // console.log('OWNER', owner)
+      // console.log('CASEMAP', casemap)
+
       
       if (spec.active) {
-        //var usr_id = owner.usr
-        //var org_id = owner.org
-        
         if ('list' === msg.cmd || 'remove' === msg.cmd ) {
-          intern.refine_query(msg,queryprop,spec,owner)          
+          intern.refine_query(self,msg,queryprop,spec,owner)          
           return self.prior(msg, reply)
         }
         else if ('load' === msg.cmd ) {
           // only change query if not loading by id - preserves caching!
           if(null == msg[queryprop].id) {
-            intern.refine_query(msg,queryprop,spec,owner)
+            intern.refine_query(self,msg,queryprop,spec,owner)
           }
 
           self.prior(msg, function(err, out) {
-            //console.log('LOAD PRIOR', err, out)
+            console.log('LOAD PRIOR', err, out)
             
             if(err) return reply(err)
             if(null == out) return reply()
@@ -139,15 +141,21 @@ function owner(options) {
             // was not an id-based query, so refinement already made
             if(null == msg[queryprop].id) return reply(out)
 
+            if(modifiers.entity) {
+              spec = modifiers.entity(spec,owner,msg,out)
+            }
+
             var pass = true
             spec.fields.forEach(function(f){
               // need this field to match owner for ent to be readable
               if(spec.read[f]) {
-                pass = pass && (out[f] === owner[f])
+                pass = pass && (
+                  (Array.isArray(owner[f]) && owner[f].includes(out[f])) ||
+                    out[f] === owner[f] )
               }
             })
 
-            // console.log('PASS', pass, spec, owner)
+            console.log('PASS', pass, spec, owner, out)
             
             reply(pass ? out : null)
           })
@@ -155,27 +163,45 @@ function owner(options) {
         else if('save' === msg.cmd ) {
           var ent = msg[entprop]
 
+          // console.log('SAVE A', ent)
+          
           // only set fields props if not already set
           spec.fields.forEach(f=>{
+            // console.log('SAVE FIELD', f, spec.inject[f], ent[f], owner[f])
             if (spec.inject[f] && null == ent[f] && null != owner[f]) {
-              ent[f] = owner[f]
+              ent[f] = Array.isArray(owner[f]) ? owner[f][0] : owner[f] 
             }
           })
+
+          // console.log('SAVE B', spec.fields, ent)
           
           // creating
           if(null == ent.id) {
 
             spec.fields.forEach(f=>{
-              if(spec.write[f] && ent[f] !== owner[f] && null != ent[f] ) {
-                self.fail('create-not-allowed', {
-                  why:'field-mismatch-on-create',
-                  field:f,
-                  ent_val:ent[f],
-                  owner_val:owner[f]
-                })
+              if(spec.write[f] && null != ent[f]) {
+/*
+                console.log('SAVE CREATE',
+                            f,
+                            owner[f],
+                            Array.isArray(owner[f]) && !owner[f].includes(ent[f]),
+                            ent[f] !== owner[f]
+                           )
+*/
+                
+                if( (Array.isArray(owner[f]) && !owner[f].includes(ent[f]))
+                    && ent[f] !== owner[f] ) {
+                  self.fail('create-not-allowed', {
+                    why:'field-mismatch-on-create',
+                    field:f,
+                    ent_val:ent[f],
+                    owner_val:owner[f]
+                  })
+                }
               }
             })
 
+            console.log('SAVE CREATE PRIOR')
             return self.prior(msg, reply)
           }
 
@@ -183,30 +209,41 @@ function owner(options) {
           else {
             // TODO: seneca entity update would really help there!
             self.make(ent.entity$).load$(ent.id, function(err, oldent) {
+              console.log('SAVE UPDATE LOAD +++++++++', ent.id, msg.q, oldent)
+
               if(err) return this.fail(err)
-              if(null == oldent) return this.fail('save-not-found',
+              if(null == oldent) return self.fail('save-not-found',
                                                   {entity:ent.entity$,id:ent.id})
               
 
               spec.fields.forEach(f=>{
-                if (spec.write[f] && oldent[f] !== owner[f]) {
+                //if (spec.write[f] && (oldent[f] !== owner[f])) {
+                if (spec.write[f] && (oldent[f] !== ent[f])) {
                   self.fail('update-not-allowed', {
                     why:'field-mismatch-on-update',
                     field:f,
                     oldent_val:oldent[f],
-                    owner_val:owner[f]
+                    //owner_val:owner[f]
+                    ent_val:ent[f]
                   })
                 }
 
                 // only change field if alter allowed
-                if (spec.alter[f] && null != owner[f]) {
-                  ent[f] = owner[f]
-                }
-                else {
+                if ( !(spec.alter[f] &&
+                       ((Array.isArray(owner[f]) && owner[f].includes[ent[f]] ) ||
+                        ent[f] === owner[f]
+                       )) ) {
+
+                  // ent[f] = owner[f]
+                  //}
+                  //else {
+
+                  // reset to existing value
                   ent[f] = oldent[f]
                 }
               })
-              
+
+              console.log('SAVE UPDATE PRIOR')
               return self.prior(msg, reply)
             })
           }
@@ -215,7 +252,11 @@ function owner(options) {
       else {
         return self.prior(msg, reply)
       }
-    })
+    }
+
+    owner.desc = 'Validate owner for '+seneca.util.pattern(msgpat)
+    
+    seneca.add(msgpat, owner)
   })
 
   return {
@@ -231,8 +272,12 @@ const intern = owner.intern = {
 
   make_spec: function(inspec) {
     const spec = intern.deepextend({}, intern.default_spec, inspec)
-    spec.fields = [...new Set(spec.fields.concat(['usr','org']))]
+    spec.fields = [...new Set(spec.fields)]
 
+    ;['write','read','inject','alter'].forEach(m => {
+      spec[m] = spec[m] || {}
+    })
+    
     spec.fields.forEach(function(f) {
       spec.write[f] = null == spec.write[f] ? true : spec.write[f]
       spec.read[f] = null == spec.read[f] ? true : spec.read[f]
@@ -248,12 +293,33 @@ const intern = owner.intern = {
     return spec
   },
 
-  refine_query: function(msg,queryprop,spec,owner) {
+  refine_query: function(seneca,msg,queryprop,spec,owner) {
     msg[queryprop] = msg[queryprop] || {}
     spec.fields.forEach(function(f){
       if (spec.read[f]) {
-        msg[queryprop][f] = owner[f]
+        if(Array.isArray(owner[f])) {
+          if( null == msg[queryprop][f]) {
+            msg[queryprop][f] = owner[f][0]
+          }
+          else if(!owner[f].includes(msg[queryprop][f])) {
+            seneca.fail('field-not-valid', {
+              field:f,
+              query_val:msg[queryprop][f],
+              valid_owner_vals:owner[f]
+            })
+          }
+        }
+        else {
+          msg[queryprop][f] = owner[f]
+        }
+
+        // remove from query if value is null
+        if(null == msg[queryprop][f]) {
+          delete msg[queryprop][f]
+        }
       }
     })
+
+    console.log('RQ', msg[queryprop])
   }
 }

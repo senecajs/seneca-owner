@@ -20,6 +20,7 @@ function make_bar_instance(fin,spec) {
     .test(fin)
     .use('entity')
     .use(Plugin, {
+      fields: ['usr','org'],
       annotate: [
         'role:entity,cmd:save,base:core',
         'role:entity,cmd:load,base:core',
@@ -40,6 +41,8 @@ function make_bar_instance(fin,spec) {
           return spec
         }
       })
+
+      // NOTE: ee:1 => error expected
       
       this
         .add(
@@ -55,20 +58,39 @@ function make_bar_instance(fin,spec) {
         .add(
           'load:bar',
           function(msg, reply) {
-            this.make('core/bar').load$(msg.id, reply)
+            var q = {...{}, ...msg.q}
+            if(msg.id) {
+              q.id = msg.id
+            }
+            this
+              .delegate({ee:msg.ee})
+              .make('core/bar').load$(q, reply)
           })
         .add(
           'list:bar',
           function(msg, reply) {
-            this.make('core/bar').list$(msg.q, reply)
+            this
+              .delegate({ee:msg.ee})
+              .make('core/bar').list$(msg.q, reply)
           })
         .add(
           'update:bar',
           function(msg, reply) {
-            this.make('core/bar').load$(msg.id, function(err, out) {
-              if(err) return;
-              out.data$(msg.data).save$(reply)
-            })
+            var q = {...{}, ...msg.q}
+            if(msg.id) {
+              q.id = msg.id
+            }
+            this
+              .delegate({ee:msg.ee})
+              .make('core/bar').load$(q, function(err, out) {
+                if(err) return;
+                if(null == out) return reply()
+
+                //console.log('BAR UPDATE ^^^^^^^^^^^^')
+                //console.dir(out)
+
+                out.data$(msg.data).save$(reply)
+              })
           })
     })
     .delegate(null, {
@@ -120,6 +142,75 @@ describe('owner', function() {
         })
       })
   })
+
+
+  
+  it('spec-load-field-match', fin => {
+    var tmp = {}
+    
+    // w can have multiple values
+    make_bar_instance(null,{fields:['w']})
+      .ready(function(){
+        var w_instance = this.root.delegate(null,{custom:{
+          'sys-owner': {
+            usr: 'alice',
+            org: 'wonderland',
+            w: [null,1,2],
+          }
+        }})
+
+        w_instance
+          .gate()
+        // no w also works
+          .act('role:foo,add:bar', {data:{d:1}}, function(err, bar1) {
+            //console.log('BAR1', bar1, err&&err.message, err&&err.details)
+            if(err) return fin(err)
+            tmp.bar1 = bar1
+          })
+          .act('role:foo,add:bar', {data:{d:2,w:1}}, function(err, bar2) {
+            //console.log('BAR2', bar2, err&&err.message, err&&err.details)
+            if(err) return fin(err)
+            tmp.bar2 = bar2
+          })
+          .act('role:foo,add:bar', {data:{d:3,w:2}}, function(err, bar3) {
+            //console.log('BAR3', bar3)
+            if(err) return fin(err)
+            tmp.bar3 = bar3
+          })
+
+        // SHOULD FAIL
+          .act('role:foo,add:bar', {data:{d:4,w:3}}, function(err, bar4) {
+            // console.log('BAR4', err, bar4)
+            expect(err).exist()
+            expect(err.code).equal('create-not-allowed')
+          })
+          .ready(function(){
+            this
+              .gate()
+            
+              .act('role:foo,load:bar', {id:tmp.bar1.id}, function(err, out) {
+                if(err) return fin(err)
+                expect(out).exists()
+                expect(out.w).equals(null)
+              })
+            
+              .act('role:foo,load:bar', {id:tmp.bar2.id}, function(err, out) {
+                if(err) return fin(err)
+                expect(out).exists()
+                expect(out.w).equals(1)
+              })    
+            
+              .act('role:foo,load:bar', {id:tmp.bar3.id}, function(err, out) {
+                if(err) return fin(err)
+                expect(out).exists()
+                expect(out.w).equals(2)
+              })
+
+              .ready(fin)
+          })
+      })
+  })
+
 
   it('spec-load-field-match', fin => {
     var tmp = {}
@@ -288,6 +379,7 @@ describe('owner', function() {
   })
 
 
+  
   it('org-scenario', fin => {
     // grp0 fields assigns entity to group, but group is not checked by default
     var spec = {
@@ -546,10 +638,344 @@ describe('owner', function() {
       })
   })
 
+
+  it('group-scenario', fin => {
+    var spec = {
+      fields: ['group']
+    }
+
+    function error_handler(err) {
+      if(!(err.details && err.details.caller && err.details.caller.includes('ee: 1'))) {
+        return fin(err)
+      }
+    }
+    
+    make_bar_instance(error_handler,spec)
+      .act('sys:owner,hook:case,case:group',{
+        modifiers: {
+          query: function(spec, owner, msg) {
+            if(owner.group.includes('admin')) {
+              spec.read.usr = false
+              spec.write.usr = false
+              spec.read.group = false
+              spec.write.group = false
+            }
+            
+            else if(owner.group.includes('staff')) {
+              spec.read.usr = false
+              spec.write.usr = false
+              spec.read.group = false
+              spec.write.group = false
+            }
+            
+            else if(msg.q && null != msg.q.group && owner.group.includes(msg.q.group)) {
+              spec.read.usr = false
+              spec.write.usr = false
+            }
+            
+            console.log('MODIFIER QUERY',spec,owner,msg)
+            
+            return spec
+          },
+
+          entity: function(spec, owner, msg, ent) {
+            console.log('MODIFIER ENTITY',spec,owner,msg,ent)
+
+            if(ent && ent.group && owner.group.includes(ent.group)) {
+              spec.read.usr = false
+              spec.write.usr = false
+            }
+            
+            return spec
+          }
+        }
+      })
+
+      .ready(function() {
+
+        var cathy_admin_org0 = this.root.delegate(null,{
+          custom: { 'sys-owner': {
+            usr: 'cathy', org: 'org0', group: ['admin','staff'], case$: 'group'
+          }}
+        })
+        
+        var alice_staff_org0 = this.root.delegate(null,{
+          custom: { 'sys-owner': {
+            usr: 'alice', org: 'org0', group: ['staff'], case$: 'group'
+          }}
+        })
+
+        var evan_guest_org0 = this.root.delegate(null,{
+          custom: { 'sys-owner': {
+            usr: 'evan', org: 'org0', group: ['guest'], case$: 'group'
+          }}
+        })
+
+        var frank_helper_org0 = this.root.delegate(null,{
+          custom: { 'sys-owner': {
+            usr: 'frank', org: 'org0', group: [null,'helper'], case$: 'group'
+          }}
+        })
+
+        var imogen_helper_org0 = this.root.delegate(null,{
+          custom: { 'sys-owner': {
+            usr: 'imogen', org: 'org0', group: [null,'helper'], case$: 'group'
+          }}
+        })
+
+        
+        var tmp = {}
+
+        alice_staff_org0
+          .act('role:foo,add:bar',{data:{id$:'d0',d:0}}, function(err, d0) {tmp.d0 = d0})
+        
+        frank_helper_org0
+          .act('role:foo,add:bar',{data:{id$:'d1',d:1,group:'helper'}}, function(err, d1) {tmp.d1 = d1})
+        
+        imogen_helper_org0
+          .act('role:foo,add:bar',{data:{id$:'d2',d:2,group:'helper'}}, function(err, d2) {tmp.d2 = d2})
+
+        cathy_admin_org0
+          .act('role:foo,add:bar',{data:{id$:'d4',d:4}},
+               function(err, d4) {tmp.d4 = d4})
+
+        frank_helper_org0
+          .act('role:foo,add:bar',{data:{id$:'d5',d:5}}, function(err, d5) {tmp.d5 = d5})
+
+        imogen_helper_org0
+          .act('role:foo,add:bar',{data:{id$:'d7',d:7}}, function(err, d7) {tmp.d7 = d7})
+        
+        alice_staff_org0.ready(function() {
+          cathy_admin_org0.ready(function() {
+            evan_guest_org0.ready(function() {
+              frank_helper_org0.ready(function() {
+                imogen_helper_org0.ready(validate)
+              })
+            })
+          })
+        })
+        
+        function validate() {
+          console.log(tmp)
+
+          expect(tmp.d0).includes({d:0,group:'staff',org:'org0',usr:'alice'})
+
+          expect(tmp.d1).includes({d:1,group:'helper',org:'org0',usr:'frank'})
+          expect(tmp.d5).includes({d:5,group:null,org:'org0',usr:'frank'})
+
+          expect(tmp.d2).includes({d:2,group:'helper',org:'org0',usr:'imogen'})
+          expect(tmp.d7).includes({d:7,group:null,org:'org0',usr:'imogen'})
+
+          expect(tmp.d4).includes({d:4,group:'admin',org:'org0',usr:'cathy'})
+
+
+
+
+              //validate_imogen_helper_org0(
+          validate_cathy_admin_org0(
+            validate_alice_staff_org0(
+              validate_frank_helper_org0(
+                fin)))()
+          //)))
+          
+          function validate_cathy_admin_org0(done) {
+            return function() {
+              console.log('START cathy')
+            
+              // admin of org0 can access all of org0
+              cathy_admin_org0
+                .gate()
+                .act('role:foo,list:bar',null, allowed('cathy-list','012457'))
+                .act('role:foo,load:bar',{id:tmp.d0.id}, allowed('cathy-load-d0',{d:0}))
+                .act('role:foo,load:bar',{id:tmp.d1.id}, allowed('cathy-load-d1',{d:1}))
+                .act('role:foo,load:bar',{id:tmp.d2.id}, allowed('cathy-load-d2',{d:2}))
+                .act('role:foo,load:bar',{id:tmp.d4.id}, allowed('cathy-load-d4',{d:4}))
+                .act('role:foo,load:bar',{id:tmp.d5.id}, allowed('cathy-load-d5',{d:5}))
+                .act('role:foo,load:bar',{id:tmp.d7.id}, allowed('cathy-load-d7',{d:7}))
+                .act('role:foo,update:bar',{id:tmp.d1.id,data:{v:1}},
+                     allowed('cathy-update-d1',{d:1,v:1}))
+
+                .act('role:mem-store,cmd:dump',function(err,out){
+                  console.log('DATA cathy')
+                  console.dir(out,{depth:3})
+                })
+
+                .ready(done)
+            }
+          }
+
+          function validate_alice_staff_org0(done) {
+            return function() {
+              console.log('START alice')
+
+              // TODO: alice should not have access to d4 as admin group
+              
+              // staff of org0 can access all of org0, nothing in org1
+              alice_staff_org0
+                .gate()
+                .act('role:foo,list:bar',null, allowed('alice-list','012457'))
+                .act('role:foo,load:bar',{id:tmp.d0.id}, allowed('alice-load-d0',{d:0}))
+                .act('role:foo,load:bar',{id:tmp.d1.id}, allowed('alice-load-d1',{d:1,v:1}))
+                .act('role:foo,load:bar',{id:tmp.d2.id}, allowed('alice-load-d2',{d:2}))
+                .act('role:foo,load:bar',{id:tmp.d4.id}, allowed('cathy-load-d4',{d:4}))
+                .act('role:foo,load:bar',{id:tmp.d5.id}, allowed('cathy-load-d5',{d:5}))
+                .act('role:foo,load:bar',{id:tmp.d7.id}, allowed('cathy-load-d7',{d:7}))
+              
+                .act('role:foo,update:bar',{id:tmp.d1.id,data:{v:2}},
+                     allowed('alice-update-d1',{d:1,v:2}))
+              
+                .act('role:mem-store,cmd:dump',function(err,out){
+                  console.log('DATA alice')
+                  console.dir(out,{depth:3})
+                })
+              
+                .ready(done)
+            }
+          }
+
+          function validate_frank_helper_org0(done) {
+            return function() {
+              console.log('START frank')
+            
+              // helper of org0 can access own data and helper data 
+              frank_helper_org0
+                .gate()
+                .act('role:foo,list:bar',null, allowed('frank-list-all','15'))
+              
+              // specify group to see everything in group
+                .act('role:foo,list:bar',{q:{group:'helper'}}, allowed('frank-list-helper','12'))
+
+                .act('role:foo,list:bar',{ee:1,q:{group:'staff'}}, denied('frank-list-staff','field-not-valid'))
+              
+                .act('role:foo,load:bar',{id:tmp.d0.id}, denied('frank-load-d0'))
+              
+                .act('role:foo,load:bar',{id:tmp.d1.id}, allowed('frank-load-d1',{d:1,v:2}))
+
+              // can access other people's stuff, in same group
+                .act('role:foo,load:bar',{id:tmp.d2.id}, allowed('frank-load-d2',{d:2}))
+
+              // can't access other people's stuff, if not in same group
+                .act('role:foo,load:bar',{id:tmp.d7.id}, denied('frank-load-d7'))
+              
+             
+                .act('role:foo,load:bar',{id:tmp.d4.id}, denied('frank-load-d4'))
+                .act('role:foo,load:bar',{id:tmp.d5.id} ,allowed('frank-load-d5',{d:5}))
+
+
+              
+              // NOTE: tests queries that don't use id, with group
+                .act('role:foo,load:bar',{q:{d:1,group:'helper'}}, allowed('frank-load-helper-no-id-d1',{d:1}))
+                .act('role:foo,load:bar',{q:{d:2,group:'helper'}}, allowed('frank-load-helper-no-id-d2',{d:2}))
+                .act('role:foo,load:bar',{ee:1,q:{d:2,group:'bad-group'}}, denied('frank-load-bad-group-no-id-d2','field-not-valid'))
+
+              // denied as even though owned, not in group
+                .act('role:foo,load:bar',{q:{d:5,group:'helper'}}, denied('frank-load-helper-no-id-d5'))
+                .act('role:foo,load:bar',{q:{id:tmp.d5.id,group:'helper'}}, denied('frank-load-helper-d5'))
+              
+                .act('role:foo,load:bar',{q:{id:tmp.d1.id,group:'helper'}}, allowed('frank-load-helper-d1',{d:1}))
+                .act('role:foo,load:bar',{q:{id:tmp.d2.id,group:'helper'}}, allowed('frank-load-helper-d2',{d:2}))
+                .act('role:foo,load:bar',{q:{id:tmp.d2.id,group:'bad-group'}}, denied('frank-load-bad-group-d2'))
+
+              // not yours, and not in group you can access
+                .act('role:foo,load:bar',{id:tmp.d7.id}, denied('frank-load-d7'))
+              
+              
+                .act('role:foo,update:bar',{id:tmp.d1.id,data:{v:3}},
+                     allowed('frank-update-d1',{d:1,v:3}))
+
+              // can update in group, even if not owner
+                .act('role:foo,update:bar',{id:tmp.d2.id,data:{v:1}},
+                     allowed('frank-update-d2',{d:2,v:1}))
+
+                //.ready(done); return; frank_helper_org0
+
+                .act('role:foo,update:bar',{id:tmp.d7.id,data:{v:1}},
+                     denied('frank-update-d7'))
+                            
+                .act('role:mem-store,cmd:dump',function(err,out){
+                  console.log('DATA frank')
+                  console.dir(out,{depth:3})
+
+                  Object.keys(out.core.bar).forEach(id=>{
+                    delete out.core.bar[id].x
+                  })
+                  
+                  expect(out).includes({
+                    core:{bar:{
+                      d0:
+                      { 'entity$': '-/core/bar',
+                        d: 0,
+                        group: 'staff',
+                        org: 'org0',
+                        usr: 'alice',
+                        id: 'd0' },
+                      d1:
+                      { 'entity$': '-/core/bar',
+                        d: 1,
+                        group: 'helper',
+                        org: 'org0',
+                        usr: 'frank',
+                        id: 'd1',
+                        v: 3 },
+                      d2:
+                      { 'entity$': '-/core/bar',
+                        d: 2,
+                        group: 'helper',
+                        org: 'org0',
+                        usr: 'imogen',
+                        id: 'd2',
+                        v: 1 },
+                      d4:
+                      { 'entity$': '-/core/bar',
+                        d: 4,
+                        group: 'admin',
+                        org: 'org0',
+                        usr: 'cathy',
+                        id: 'd4' },
+                      d5:
+                      { 'entity$': '-/core/bar',
+                        d: 5,
+                        group: null,
+                        org: 'org0',
+                        usr: 'frank',
+                        id: 'd5' },
+                      d7:
+                      { 'entity$': '-/core/bar',
+                        d: 7,
+                        group: null,
+                        org: 'org0',
+                        usr: 'imogen',
+                        id: 'd7' }
+                    }}
+                  })
+                })
+              
+                .ready(done)
+            }
+          }
+
+          function validate_imogen_helper_org0(done) {
+            return done()
+            
+            // helper of org0 can access only own data, nothing in org1
+            imogen_helper_org0
+              .gate()
+              .act('role:foo,list:bar',null, allowed('imogen-list','2'))
+              .act('role:foo,load:bar',{id:tmp.d0.id}, denied('imogen-load-d0'))
+              .act('role:foo,load:bar',{id:tmp.d1.id}, denied('imogen-load-d1'))
+              .act('role:foo,load:bar',{id:tmp.d2.id}, allowed('imogen-load-d2',{d:2}))
+              .act('role:foo,load:bar',{id:tmp.d3.id}, denied('imogen-load-d3'))
+              .ready(done)
+          }
+        }
+      })
+  })
+
+  
   it('intern', fin => {
     Seneca({legacy:{transport:false}})
       .test(fin)
-      .use(Plugin,{annotate:[]})
+      .use(Plugin)
       .ready(function() {
         expect(Plugin.intern.default_spec).exists()
         expect(Plugin.intern.deepextend).exists()
@@ -578,5 +1004,30 @@ function make_it(lab) {
         func(fin)
       })
     )
+  }
+}
+
+
+function allowed(mark,data) {
+  return function(err, out) {
+    console.log('ALLOWED '+mark)
+    
+    expect(out).exists()
+    if('string' === typeof(data)) {
+      expect(out.map(x=>''+x.d).join('')).equal(data)
+    }
+    else {
+      expect(out).includes(data)
+    }
+  }
+}
+
+function denied(mark,err_code) {
+  return function(err, out) {
+    console.log('DENIED  '+mark)
+    expect(out).not.exists()
+    if(err_code) {
+      expect(err.code).equal(err_code)
+    }
   }
 }
