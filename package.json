@@ -7,6 +7,7 @@
     "test": "lab -v -P test -t 80 -I BigUint64Array,BigInt64Array,BigInt,URL,URLSearchParams",
     "prettier": "prettier --write --no-semi --single-quote *.js lib/*.js test/*.js",
     "coveralls": "lab -s -P test -r lcov | coveralls",
+    "coverage": "lab -v -P test -r html > coverage.html",
     "clean-npm": "rm -rf node_modules package-lock.json",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
     "repo-publish": "npm test && npm run repo-tag && npm publish"
