@@ -1,6 +1,6 @@
 {
   "name": "@seneca/owner",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Seneca plugin to add user ownership annotations to entities.",
   "main": "owner.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "coverage": "lab -v -P test -r html > coverage.html",
     "clean-npm": "rm -rf node_modules package-lock.json",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
-    "repo-publish": "npm test && npm run repo-tag && npm publish"
+    "repo-publish": "npm run prettier && npm test && npm run repo-tag && npm publish"
   },
   "repository": {
     "type": "git",
@@ -34,7 +34,7 @@
     "joi": "^14.3.1",
     "lab": "^18.0.2",
     "prettier": "^1.17.0",
-    "seneca": "senecajs/seneca",
+    "seneca": "^3.9.0",
     "seneca-entity": "^3.3.0",
     "seneca-plugin-validator": "0",
     "seneca-promisify": "^0.7.1"

@@ -312,7 +312,11 @@ function owner(options) {
 
   return {
     exports: {
-      make_spec: intern.make_spec
+      make_spec: intern.make_spec,
+      config: {
+        spec: intern.default_spec,
+        options: options
+      }
     }
   }
 }
@@ -364,6 +368,7 @@ const intern = (owner.intern = {
         }
       }
     })
+    // console.log('RQ', msg[queryprop])
   },
 
   match: function(matching_val, check_val) {
