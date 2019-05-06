@@ -7,7 +7,7 @@
 
 This plugin blocks access to entities unless certain fields match
 custom values in the Seneca instance. It also ensures that entities
-are saved with approporiate field values.
+are saved with appropriate field values.
 
 
 ## Quick Example

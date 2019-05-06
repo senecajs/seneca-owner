@@ -14,13 +14,14 @@ const PluginValidator = require('seneca-plugin-validator')
 const Seneca = require('seneca')
 const Plugin = require('..')
 
-function make_bar_instance(fin,spec) {
+function make_bar_instance(fin,spec,explain) {
   spec = spec || {}
   return Seneca({legacy:{transport:false}})
   // turn off quiet to see errors
     .test('quiet',fin)
     .use('entity')
     .use(Plugin, {
+      explain: explain,
       fields: ['usr','org'],
       annotate: [
         'role:entity,cmd:save,base:core',
@@ -402,7 +403,7 @@ describe('owner', function() {
       }
     }
 
-    make_bar_instance(fin,spec)
+    make_bar_instance(fin,spec,true)
       .act('sys:owner,hook:case,case:group',{
         modifiers: {
           query: function(spec, owner) {
@@ -620,7 +621,7 @@ describe('owner', function() {
       }
     }
     
-    make_bar_instance(error_handler,spec)
+    make_bar_instance(error_handler,spec,true)
       .act('sys:owner,hook:case,case:group',{
         modifiers: {
           query: function(spec, owner, msg) {
@@ -795,7 +796,14 @@ describe('owner', function() {
                   //console.dir(out,{depth:3})
                 })
 
-                .ready(done)
+                .ready(function() {
+                  var d999 = this.make('core/bar').data$({d:999})
+                  d999.id = 'd999'
+                  d999.save$(function(err) {
+                    expect(err.code).equal('save-not-found')
+                    done()
+                  })
+                })
             }
           }
 
