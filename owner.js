@@ -1,9 +1,7 @@
 /* Copyright (c) 2018-2019 voxgig and other contributors, MIT License */
 'use strict'
 
-
 const Util = require('util')
-
 
 const Joi = require('joi')
 
@@ -40,7 +38,7 @@ module.exports.defaults = {
   entprop: Joi.string().default('ent'),
   queryprop: Joi.string().default('q'),
   annotate: Joi.array().default([]),
-  fields: Joi.array().default([]),
+  fields: Joi.array().default([])
 }
 
 function owner(options) {
@@ -52,7 +50,6 @@ function owner(options) {
     ...new Set(options.default_spec.fields.concat(options.fields))
   ]
   intern.default_spec = intern.make_spec(options.default_spec)
-
 
   const casemap = {}
 
@@ -82,7 +79,7 @@ function owner(options) {
     var owner = function owner(msg, reply, meta) {
       var self = this
       var explain = this.explain()
-      
+
       var expdata = explain && {
         when: Date.now(),
         msgpat: msgpat,
@@ -214,7 +211,13 @@ function owner(options) {
 
             explain && ((expdata.pass = pass), (expdata.ent = load_ent))
 
-            return intern.reply(self, reply, pass ? load_ent : null, explain, expdata)
+            return intern.reply(
+              self,
+              reply,
+              pass ? load_ent : null,
+              explain,
+              expdata
+            )
           })
         }
 
@@ -271,7 +274,7 @@ function owner(options) {
                   code: 'save-not-found',
                   details: { entity: ent.entity$, id: ent.id }
                 }
-                
+
                 explain && (expdata.fail = fail)
                 return intern.fail(self, reply, fail, explain, expdata)
               }
@@ -376,9 +379,11 @@ const intern = (owner.intern = {
   match: function(matching_val, check_val) {
     // match if check_val (from ent) is undefined (thus not considered), or
     // if check_val (from ent) equals one of the valid matching vals
-    return (void 0 === check_val) ||
+    return (
+      void 0 === check_val ||
       ((Array.isArray(matching_val) && matching_val.includes(check_val)) ||
-       check_val === matching_val)
+        check_val === matching_val)
+    )
   },
 
   prior: function(self, msg, reply, explain, expdata) {
