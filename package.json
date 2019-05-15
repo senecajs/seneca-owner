@@ -34,9 +34,9 @@
     "joi": "^14.3.1",
     "lab": "^18.0.2",
     "prettier": "^1.17.0",
-    "seneca": "^3.9.0",
-    "seneca-entity": "^3.3.0",
-    "seneca-plugin-validator": "0",
-    "seneca-promisify": "^0.7.1"
+    "seneca": "^3.11.0",
+    "seneca-entity": "^4.0.0",
+    "seneca-plugin-validator": "^0.0.1",
+    "seneca-promisify": "^0.8.0"
   }
 }

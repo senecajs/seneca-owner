@@ -1,6 +1,10 @@
 /* Copyright (c) 2018-2019 voxgig and other contributors, MIT License */
 'use strict'
 
+
+const Util = require('util')
+
+
 const Joi = require('joi')
 
 module.exports = owner
@@ -37,7 +41,6 @@ module.exports.defaults = {
   queryprop: Joi.string().default('q'),
   annotate: Joi.array().default([]),
   fields: Joi.array().default([]),
-  explain: Joi.boolean().default(false)
 }
 
 function owner(options) {
@@ -49,6 +52,7 @@ function owner(options) {
     ...new Set(options.default_spec.fields.concat(options.fields))
   ]
   intern.default_spec = intern.make_spec(options.default_spec)
+
 
   const casemap = {}
 
@@ -77,13 +81,12 @@ function owner(options) {
   annotate.forEach(function(msgpat) {
     var owner = function owner(msg, reply, meta) {
       var self = this
-
-      var explain = options.explain && {
-        explain: true,
+      var explain = this.explain()
+      
+      var expdata = explain && {
         when: Date.now(),
         msgpat: msgpat,
-        msg: msg,
-        meta: meta,
+        msgid: meta.id,
         modifiers: {}
       }
 
@@ -96,19 +99,19 @@ function owner(options) {
       }
 
       if (modifiers.query) {
-        explain && (explain.modifiers.query = true)
+        explain && (expdata.modifiers.query = true)
         spec = modifiers.query(spec, owner, msg)
       }
 
       explain &&
-        ((explain.owner = owner), (explain.spec = self.util.deepextend(spec)))
+        ((expdata.owner = owner), (expdata.spec = self.util.deepextend(spec)))
 
       if (spec.active) {
         if ('list' === msg.cmd) {
-          explain && (explain.path = 'list')
+          explain && (expdata.path = 'list')
 
           intern.refine_query(self, msg, queryprop, spec, owner)
-          explain && (explain.query = msg[queryprop])
+          explain && (expdata.query = msg[queryprop])
 
           return self.prior(msg, function(err, list) {
             if (err) return reply(err)
@@ -116,59 +119,59 @@ function owner(options) {
 
             if (modifiers.list) {
               explain &&
-                ((explain.modifiers.list = true),
-                (explain.orig_list_len = list ? list.length : 0))
+                ((expdata.modifiers.list = true),
+                (expdata.orig_list_len = list ? list.length : 0))
               list = modifiers.list(spec, owner, msg, list)
             }
 
-            explain && (explain.list_len = list ? list.length : 0)
+            explain && (expdata.list_len = list ? list.length : 0)
 
-            return intern.reply(self, reply, list, explain)
+            return intern.reply(self, reply, list, explain, expdata)
           })
         }
 
         // handle remove operation
         else if ('remove' === msg.cmd) {
-          explain && (explain.path = 'remove')
+          explain && (expdata.path = 'remove')
 
           intern.refine_query(self, msg, queryprop, spec, owner)
-          explain && (explain.query = msg[queryprop])
+          explain && (expdata.query = msg[queryprop])
 
           self.make(msg.ent.entity$).list$(msg.q, function(err, list) {
             if (err) return self.fail(err)
 
             if (modifiers.list) {
               explain &&
-                ((explain.modifiers.list = true),
-                (explain.orig_list_len = list ? list.length : 0))
+                ((expdata.modifiers.list = true),
+                (expdata.orig_list_len = list ? list.length : 0))
               list = modifiers.list(spec, owner, msg, list)
             }
 
             if (0 < list.length) {
               explain &&
-                ((explain.empty = false),
-                (explain.list_len = list ? list.length : 0))
+                ((expdata.empty = false),
+                (expdata.list_len = list ? list.length : 0))
 
-              return intern.prior(self, msg, reply, explain)
+              return intern.prior(self, msg, reply, explain, expdata)
             }
 
             // nothing to delete
             else {
-              explain && (explain.empty = true)
+              explain && (expdata.empty = true)
 
-              return intern.reply(self, reply, void 0, explain)
+              return intern.reply(self, reply, void 0, explain, expdata)
             }
           })
         }
 
         // handle load operation
         else if ('load' === msg.cmd) {
-          explain && (explain.path = 'load')
+          explain && (expdata.path = 'load')
 
           // only change query if not loading by id - preserves caching!
           if (null == msg[queryprop].id) {
             intern.refine_query(self, msg, queryprop, spec, owner)
-            explain && (explain.query = msg[queryprop])
+            explain && (expdata.query = msg[queryprop])
           }
 
           self.prior(msg, function(err, load_ent) {
@@ -177,16 +180,16 @@ function owner(options) {
 
             // was not an id-based query, so refinement already made
             if (null == msg[queryprop].id) {
-              explain && ((explain.query_load = true), (explain.ent = load_ent))
+              explain && ((expdata.query_load = true), (expdata.ent = load_ent))
 
-              return intern.reply(self, reply, load_ent, explain)
+              return intern.reply(self, reply, load_ent, explain, expdata)
             }
 
             if (modifiers.entity) {
-              explain && (explain.modifiers.entity = true)
+              explain && (expdata.modifiers.entity = true)
 
               spec = modifiers.entity(spec, owner, msg, load_ent)
-              explain && (explain.modifiers.entity_spec = spec)
+              explain && (expdata.modifiers.entity_spec = spec)
             }
 
             var pass = true
@@ -199,7 +202,7 @@ function owner(options) {
 
                 if (!pass) {
                   explain &&
-                    (explain.field_match_fail = {
+                    (expdata.field_match_fail = {
                       field: f,
                       ent_val: load_ent[f],
                       owner_val: owner[f]
@@ -209,15 +212,15 @@ function owner(options) {
               }
             }
 
-            explain && ((explain.pass = pass), (explain.ent = load_ent))
+            explain && ((expdata.pass = pass), (expdata.ent = load_ent))
 
-            return intern.reply(self, reply, pass ? load_ent : null, explain)
+            return intern.reply(self, reply, pass ? load_ent : null, explain, expdata)
           })
         }
 
         // handle save operation
         else if ('save' === msg.cmd) {
-          explain && (explain.path = 'save')
+          explain && (expdata.path = 'save')
 
           var ent = msg[entprop]
 
@@ -231,7 +234,7 @@ function owner(options) {
 
           // creating
           if (null == ent.id) {
-            explain && (explain.path = 'save/create')
+            explain && (expdata.path = 'save/create')
 
             for (var i = 0; i < spec.fields.length; i++) {
               var f = spec.fields[i]
@@ -246,19 +249,19 @@ function owner(options) {
                       owner_val: owner[f]
                     }
                   }
-                  explain && (explain.fail = fail)
+                  explain && (expdata.fail = fail)
 
-                  return intern.fail(self, reply, fail, explain)
+                  return intern.fail(self, reply, fail, explain, expdata)
                 }
               }
             }
 
-            return intern.prior(self, msg, reply, explain)
+            return intern.prior(self, msg, reply, explain, expdata)
           }
 
           // updating
           else {
-            explain && (explain.path = 'save/update')
+            explain && (expdata.path = 'save/update')
 
             // TODO: seneca entity update would really help there!
             self.make(ent.entity$).load$(ent.id, function(err, oldent) {
@@ -268,9 +271,9 @@ function owner(options) {
                   code: 'save-not-found',
                   details: { entity: ent.entity$, id: ent.id }
                 }
-                explain && (explain.fail = fail)
-
-                return intern.fail(self, reply, fail, explain)
+                
+                explain && (expdata.fail = fail)
+                return intern.fail(self, reply, fail, explain, expdata)
               }
 
               for (var i = 0; i < spec.fields.length; i++) {
@@ -285,14 +288,14 @@ function owner(options) {
                       ent_val: ent[f]
                     }
                   }
-                  explain && (explain.fail = fail)
+                  explain && (expdata.fail = fail)
 
-                  return intern.fail(self, reply, fail, explain)
+                  return intern.fail(self, reply, fail, explain, expdata)
                 }
               }
 
-              explain && (explain.save = true)
-              return intern.prior(self, msg, reply, explain)
+              explain && (expdata.save = true)
+              return intern.prior(self, msg, reply, explain, expdata)
             })
           }
         }
@@ -300,8 +303,8 @@ function owner(options) {
 
       // not active, do nothing
       else {
-        explain && (explain.active = false)
-        return intern.prior(self, msg, reply, explain)
+        explain && (expdata.active = false)
+        return intern.prior(self, msg, reply, explain, expdata)
       }
     }
 
@@ -368,28 +371,28 @@ const intern = (owner.intern = {
         }
       }
     })
-    // console.log('RQ', msg[queryprop])
   },
 
   match: function(matching_val, check_val) {
-    return (
-      (Array.isArray(matching_val) && matching_val.includes(check_val)) ||
-      check_val === matching_val
-    )
+    // match if check_val (from ent) is undefined (thus not considered), or
+    // if check_val (from ent) equals one of the valid matching vals
+    return (void 0 === check_val) ||
+      ((Array.isArray(matching_val) && matching_val.includes(check_val)) ||
+       check_val === matching_val)
   },
 
-  prior: function(self, msg, reply, explain) {
-    explain && self.log.info(explain)
+  prior: function(self, msg, reply, explain, expdata) {
+    explain && explain(expdata)
     return self.prior(msg, reply)
   },
 
-  reply: function(self, reply, result, explain) {
-    explain && self.log.info(explain)
+  reply: function(self, reply, result, explain, expdata) {
+    explain && explain(expdata)
     return reply(result)
   },
 
-  fail: function(self, reply, fail, explain) {
-    explain && self.log.info(explain)
+  fail: function(self, reply, fail, explain, expdata) {
+    explain && explain(expdata)
     return reply(self.error(fail.code, fail.details))
   }
 })
