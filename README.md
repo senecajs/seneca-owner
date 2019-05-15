@@ -1,5 +1,5 @@
 # seneca-owner
-[Seneca](senecajs.org) plugin providing ownership permissions for entities.
+[Seneca](https://senecajs.org) plugin providing ownership permissions for entities.
 
 [![Npm][BadgeNpm]][Npm]
 [![Travis][BadgeTravis]][Travis]
