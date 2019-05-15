@@ -75,6 +75,24 @@ For an example showing groups with custom permissions, see the
 `group-scenario` unit test.
 
 
+## Debugging
+
+Ownership rules can become complex. To debug individual use-cases, in production or otherwise, use the `Seneca.explain` feature.
+
+```
+var explain_log = []
+await seneca.post('cmd:do-stuff', {explain$: explain_log})
+console.log(explain_log) // A record of message calls and custom debug information.
+```
+
+The _explain_ functionality is also supported by [seneca-browser](github.com/voxgig/seneca-browser), so you can use it directly in the browser console. You may find it more useful to use the general capture: 
+
+```
+var explain_log = seneca.explain(true)
+... user interface actions that generate requests
+console.log(explain_log)
+```
+
 
 [BadgeCoveralls]: https://coveralls.io/repos/voxgig/seneca-owner/badge.svg?branch=master&service=github
 [BadgeNpm]: https://badge.fury.io/js/seneca-owner.svg
