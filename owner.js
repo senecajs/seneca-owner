@@ -38,7 +38,8 @@ module.exports.defaults = {
   entprop: Joi.string().default('ent'),
   queryprop: Joi.string().default('q'),
   annotate: Joi.array().default([]),
-  fields: Joi.array().default([])
+  fields: Joi.array().default([]),
+  owner_required: Joi.boolean().default(true)
 }
 
 function owner(options) {
@@ -84,12 +85,18 @@ function owner(options) {
         when: Date.now(),
         msgpat: msgpat,
         msgid: meta.id,
-        modifiers: {}
+        modifiers: {},
+        options: options
       }
 
       var spec = self.util.deepextend(meta.custom[specP] || intern.default_spec)
       var owner = meta.custom[ownerprop]
 
+      if(!owner && !options.owner_required) {
+        explain && (expdata.owner_required = false, expdata.pass = true)
+        return intern.prior(self, msg, reply, explain, expdata)
+      }
+      
       var modifiers = {}
       if (owner && casemap[owner[caseP]]) {
         modifiers = casemap[owner[caseP]]
@@ -281,7 +288,7 @@ function owner(options) {
 
               for (var i = 0; i < spec.fields.length; i++) {
                 var f = spec.fields[i]
-                if (!spec.alter[f] && oldent[f] !== ent[f]) {
+                if (spec.write[f] && !spec.alter[f] && oldent[f] !== ent[f]) {
                   var fail = {
                     code: 'update-not-allowed',
                     details: {
