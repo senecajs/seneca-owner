@@ -92,11 +92,11 @@ function owner(options) {
       var spec = self.util.deepextend(meta.custom[specP] || intern.default_spec)
       var owner = meta.custom[ownerprop]
 
-      if(!owner && !options.owner_required) {
-        explain && (expdata.owner_required = false, expdata.pass = true)
+      if (!owner && !options.owner_required) {
+        explain && ((expdata.owner_required = false), (expdata.pass = true))
         return intern.prior(self, msg, reply, explain, expdata)
       }
-      
+
       var modifiers = {}
       if (owner && casemap[owner[caseP]]) {
         modifiers = casemap[owner[caseP]]
