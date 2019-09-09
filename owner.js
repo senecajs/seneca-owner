@@ -3,7 +3,7 @@
 
 const Util = require('util')
 
-const Joi = require('joi')
+const Joi = require('@hapi/joi')
 
 module.exports = owner
 module.exports.defaults = {

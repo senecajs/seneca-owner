@@ -3,8 +3,8 @@
 
 const Util = require('util')
 
-const Lab = require('lab')
-const Code = require('code')
+const Lab = require('@hapi/lab')
+const Code = require('@hapi/code')
 const lab = (exports.lab = Lab.script())
 var describe = lab.describe
 const expect = Code.expect
@@ -109,7 +109,7 @@ function make_bar_instance(fin, spec, explain) {
 }
 
 describe('owner', function() {
-  it('validate', PluginValidator(Plugin, module))
+  lab.it('validate', PluginValidator(Plugin, module))
 
   it('happy', fin => {
     make_bar_instance(fin).ready(function() {
