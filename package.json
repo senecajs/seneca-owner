@@ -1,6 +1,6 @@
 {
   "name": "@seneca/owner",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Seneca plugin to add user ownership annotations to entities.",
   "main": "owner.js",
   "scripts": {
@@ -35,9 +35,9 @@
     "@hapi/lab": "^20.2.2",
     "coveralls": "^3.0.6",
     "prettier": "^1.18.2",
-    "seneca": "^3.15.0",
-    "seneca-entity": "^5.1.1",
+    "seneca": "^3.15.1",
+    "seneca-entity": "^5.1.2",
     "seneca-plugin-validator": "^0.3.0",
-    "seneca-promisify": "^1.0.1"
+    "seneca-promisify": "^1.1.0"
   }
 }
