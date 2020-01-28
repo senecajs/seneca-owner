@@ -388,8 +388,8 @@ const intern = (owner.intern = {
     // if check_val (from ent) equals one of the valid matching vals
     return (
       void 0 === check_val ||
-      ((Array.isArray(matching_val) && matching_val.includes(check_val)) ||
-        check_val === matching_val)
+      (Array.isArray(matching_val) && matching_val.includes(check_val)) ||
+        check_val === matching_val
     )
   },
 
