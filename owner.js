@@ -326,6 +326,7 @@ function owner(options) {
   return {
     exports: {
       make_spec: intern.make_spec,
+      casemap: casemap,
       config: {
         spec: intern.default_spec,
         options: options
