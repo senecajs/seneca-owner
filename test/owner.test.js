@@ -20,6 +20,7 @@ function make_bar_instance(fin, spec, explain) {
     Seneca({ legacy: { transport: false } })
       // turn off quiet to see errors
       .test('quiet', fin)
+      //.test(fin)
       .use('entity')
       .use(Plugin, {
         explain: explain,
