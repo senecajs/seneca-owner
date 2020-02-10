@@ -104,7 +104,7 @@ function owner(options) {
 
       if (modifiers.query) {
         explain && (expdata.modifiers.query = true)
-        spec = modifiers.query(spec, owner, msg)
+        spec = modifiers.query.call(self, spec, owner, msg)
       }
 
       explain &&
@@ -125,7 +125,7 @@ function owner(options) {
               explain &&
                 ((expdata.modifiers.list = true),
                 (expdata.orig_list_len = list ? list.length : 0))
-              list = modifiers.list(spec, owner, msg, list)
+              list = modifiers.list.call(self, spec, owner, msg, list)
             }
 
             explain && (expdata.list_len = list ? list.length : 0)
@@ -148,7 +148,7 @@ function owner(options) {
               explain &&
                 ((expdata.modifiers.list = true),
                 (expdata.orig_list_len = list ? list.length : 0))
-              list = modifiers.list(spec, owner, msg, list)
+              list = modifiers.list.call(self, spec, owner, msg, list)
             }
 
             if (0 < list.length) {
@@ -192,7 +192,7 @@ function owner(options) {
             if (modifiers.entity) {
               explain && (expdata.modifiers.entity = true)
 
-              spec = modifiers.entity(spec, owner, msg, load_ent)
+              spec = modifiers.entity.call(self, spec, owner, msg, load_ent)
               explain && (expdata.modifiers.entity_spec = spec)
             }
 
