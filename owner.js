@@ -366,17 +366,15 @@ const intern = (owner.intern = {
             //msg[queryprop][f] = owner[f][0]
             msg[queryprop][f] = owner[f] // seneca store must support $in-style queries
           } else if (Array.isArray(msg[queryprop][f])) {
-
             // need an intersection to match
-            var merge = [...new Set(owner[f],msg[queryprop][f])]
-            if(merge.length === owner[f].length+msg[queryprop][f].length) {
+            var merge = [...new Set(owner[f], msg[queryprop][f])]
+            if (merge.length === owner[f].length + msg[queryprop][f].length) {
               seneca.fail('field-values-not-valid', {
                 field: f,
                 query_val: msg[queryprop][f],
                 valid_owner_vals: owner[f]
               })
             }
-
           } else if (!owner[f].includes(msg[queryprop][f])) {
             seneca.fail('field-not-valid', {
               field: f,
@@ -402,7 +400,7 @@ const intern = (owner.intern = {
     return (
       void 0 === check_val ||
       (Array.isArray(matching_val) && matching_val.includes(check_val)) ||
-        check_val === matching_val
+      check_val === matching_val
     )
   },
 
