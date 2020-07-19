@@ -812,8 +812,6 @@ describe('owner', function() {
     }
 
     function error_handler(err) {
-      return
-
       if (
         !(
           err.details &&

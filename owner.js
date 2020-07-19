@@ -1,7 +1,5 @@
-/* Copyright (c) 2018-2019 voxgig and other contributors, MIT License */
+/* Copyright (c) 2018-2020 Voxgig and other contributors, MIT License */
 'use strict'
-
-const Util = require('util')
 
 const Joi = require('@hapi/joi')
 
@@ -151,6 +149,7 @@ function owner(options) {
               list = modifiers.list.call(self, spec, owner, msg, list)
             }
 
+            // TODO: should use list result ids!!!
             if (0 < list.length) {
               explain &&
                 ((expdata.empty = false),
@@ -246,8 +245,8 @@ function owner(options) {
           if (null == ent.id) {
             explain && (expdata.path = 'save/create')
 
-            for (var i = 0; i < spec.fields.length; i++) {
-              var f = spec.fields[i]
+            for (i = 0; i < spec.fields.length; i++) {
+              f = spec.fields[i]
               if (spec.write[f] && null != ent[f]) {
                 if (!intern.match(owner[f], ent[f])) {
                   var fail = {
@@ -289,7 +288,7 @@ function owner(options) {
               for (var i = 0; i < spec.fields.length; i++) {
                 var f = spec.fields[i]
                 if (spec.write[f] && !spec.alter[f] && oldent[f] !== ent[f]) {
-                  var fail = {
+                  fail = {
                     code: 'update-not-allowed',
                     details: {
                       why: 'field-mismatch-on-update',
@@ -368,8 +367,11 @@ const intern = (owner.intern = {
             msg[queryprop][f] = owner[f] // seneca store must support $in-style queries
           } else if (Array.isArray(msg[queryprop][f])) {
             // need an intersection to match
-            var merge = [...new Set(owner[f], msg[queryprop][f])]
-            if (merge.length === owner[f].length + msg[queryprop][f].length) {
+
+            var merge_uniq = [...new Set([...owner[f], ...msg[queryprop][f]])]
+
+            // no intersection if no common values
+            if (merge_uniq.length === owner[f].length + msg[queryprop][f].length) {
               seneca.fail('field-values-not-valid', {
                 field: f,
                 query_val: msg[queryprop][f],

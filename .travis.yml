@@ -1,14 +1,13 @@
 language: node_js
-sudo: false
 
 env:
   - SENECA_VER=senecajs/seneca
 
 node_js:
+  - '14'
   - '13'
   - '12'
   - '10'
-  - '8'
 
 before_script:
   - npm uninstall seneca
@@ -16,3 +15,8 @@ before_script:
 
 after_script:
   - npm run coveralls
+
+os:
+  - "linux"
+  - "osx"
+  - "windows"
