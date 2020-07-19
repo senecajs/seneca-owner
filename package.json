@@ -6,7 +6,7 @@
   "scripts": {
     "watch": "tsc -w -d",
     "build": "tsc -d",
-    "test": "lab -v -P test -L -t 80 --sourcemaps --transform node_modules/lab-transform-typescript  -r console -o stdout -r html -o test/coverage.html",
+    "test": "lab -v -P test -L -t 75 --sourcemaps --transform node_modules/lab-transform-typescript  -r console -o stdout -r html -o test/coverage.html",
     "prettier": "prettier --write --no-semi --single-quote *.js lib/*.js test/*.js",
     "coveralls": "lab -s -P test -r lcov | coveralls",
     "coverage": "lab -v -P test -r html > coverage.html",
@@ -37,14 +37,15 @@
   "devDependencies": {
     "@hapi/code": "^8.0.1",
     "@hapi/lab": "^22.0.4",
+    "@types/hapi__joi": "^17.1.4",
+    "@types/node": "^14.0.23",
     "coveralls": "^3.1.0",
+    "lab-transform-typescript": "^3.0.1",
     "prettier": "^2.0.5",
     "seneca": "^3.22.0",
     "seneca-entity": "^10.0.2",
     "seneca-plugin-validator": "^0.6.1",
     "seneca-promisify": "^2.0.0",
-    "typescript": "^3.9.7",
-    "@types/node": "^14.0.23",
-    "lab-transform-typescript": "^3.0.1"
+    "typescript": "^3.9.7"
   }
 }
