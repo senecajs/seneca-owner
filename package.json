@@ -1,12 +1,12 @@
 {
   "name": "@seneca/owner",
-  "version": "4.2.1",
+  "version": "5.0.0",
   "description": "Seneca plugin to add user ownership annotations to entities.",
   "main": "owner.js",
   "scripts": {
     "watch": "tsc -w -d",
     "build": "tsc -d",
-    "test": "lab -v -P test -L -t 75 --sourcemaps --transform node_modules/lab-transform-typescript  -r console -o stdout -r html -o test/coverage.html",
+    "test": "lab -v -P test -L -t 80 --sourcemaps --transform node_modules/lab-transform-typescript  -r console -o stdout -r html -o test/coverage.html",
     "prettier": "prettier --write --no-semi --single-quote *.js lib/*.js test/*.js",
     "coveralls": "lab -s -P test -r lcov | coveralls",
     "coverage": "lab -v -P test -r html > coverage.html",
@@ -14,7 +14,7 @@
     "reset": "npm run clean && npm i && npm test",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
     "repo-publish": "npm run clean && npm i --registry http://registry.npmjs.org && npm run repo-publish-quick",
-    "repo-publish-quick": "npm run prettier && npm test && npm run repo-tag && npm publish --access public --registry=http://registry.npmjs.org"
+    "repo-publish-quick": "npm run prettier && npm run build && npm test && npm run repo-tag && npm publish --access public --registry=http://registry.npmjs.org"
   },
   "repository": {
     "type": "git",
@@ -29,7 +29,8 @@
   "files": [
     "LICENSE",
     "README.md",
-    "owner.js"
+    "owner.*",
+    "lib"
   ],
   "dependencies": {
     "@hapi/joi": "^17.1.1"

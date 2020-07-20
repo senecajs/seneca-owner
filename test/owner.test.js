@@ -29,23 +29,23 @@ function make_bar_instance(fin, spec, explain) {
           'role:entity,cmd:save,base:core',
           'role:entity,cmd:load,base:core',
           'role:entity,cmd:list,base:core',
-          'role:entity,cmd:remove,base:core'
-        ]
+          'role:entity,cmd:remove,base:core',
+        ],
       })
-      .ready(function() {
+      .ready(function () {
         var make_spec = this.export('owner/make_spec')
         var full_spec = make_spec(spec)
 
         this.act('sys:owner,hook:case,case:admin', {
           modifiers: {
-            query: function(spec, owner) {
+            query: function (spec, owner) {
               if ('cathy' === owner.usr) {
                 spec.read.usr = false
                 spec.write.usr = false
               }
               return spec
-            }
-          }
+            },
+          },
         })
 
         // NOTE: ee:1 => error expected
@@ -53,7 +53,7 @@ function make_bar_instance(fin, spec, explain) {
         this.add(
           'role:foo,add:bar',
           { custom$: { 'sys-owner-spec': full_spec } },
-          function(msg, reply) {
+          function (msg, reply) {
             this.make(
               'core/bar',
               Object.assign({ x: Math.random() }, msg.data)
@@ -62,37 +62,31 @@ function make_bar_instance(fin, spec, explain) {
         )
 
         this.fix('role:foo', null, { 'sys-owner-spec': full_spec })
-          .add('load:bar', function(msg, reply) {
+          .add('load:bar', function (msg, reply) {
+            var q = { ...{}, ...msg.q }
+            if (msg.id) {
+              q.id = msg.id
+            }
+            this.delegate({ ee: msg.ee }).make('core/bar').load$(q, reply)
+          })
+          .add('list:bar', function (msg, reply) {
+            this.delegate({ ee: msg.ee }).make('core/bar').list$(msg.q, reply)
+          })
+          .add('remove:bar', function (msg, reply) {
+            this.delegate({ ee: msg.ee }).make('core/bar').remove$(msg.q, reply)
+          })
+          .add('update:bar', function (msg, reply) {
             var q = { ...{}, ...msg.q }
             if (msg.id) {
               q.id = msg.id
             }
             this.delegate({ ee: msg.ee })
               .make('core/bar')
-              .load$(q, reply)
-          })
-          .add('list:bar', function(msg, reply) {
-            this.delegate({ ee: msg.ee })
-              .make('core/bar')
-              .list$(msg.q, reply)
-          })
-          .add('remove:bar', function(msg, reply) {
-            this.delegate({ ee: msg.ee })
-              .make('core/bar')
-              .remove$(msg.q, reply)
-          })
-          .add('update:bar', function(msg, reply) {
-            var q = { ...{}, ...msg.q }
-            if (msg.id) {
-              q.id = msg.id
-            }
-            this.delegate({ ee: msg.ee })
-              .make('core/bar')
-              .load$(q, function(err, out) {
+              .load$(q, function (err, out) {
                 if (err) return reply(err)
                 if (null == out) return reply()
 
-                out.data$(msg.data).save$(function(err, out) {
+                out.data$(msg.data).save$(function (err, out) {
                   reply(err, out)
                 })
               })
@@ -102,19 +96,19 @@ function make_bar_instance(fin, spec, explain) {
         custom: {
           'sys-owner': {
             usr: 'alice',
-            org: 'wonderland'
-          }
-        }
+            org: 'wonderland',
+          },
+        },
       })
   )
 }
 
-describe('owner', function() {
+describe('owner', function () {
   lab.it('validate', PluginValidator(Plugin, module))
 
-  it('happy', fin => {
-    make_bar_instance(fin).ready(function() {
-      this.act('role:foo,add:bar', function(err, out) {
+  it('happy', (fin) => {
+    make_bar_instance(fin).ready(function () {
+      this.act('role:foo,add:bar', function (err, out) {
         expect(out.usr).equal('alice')
         expect(out.org).equal('wonderland')
         fin()
@@ -122,10 +116,12 @@ describe('owner', function() {
     })
   })
 
-  it('spec-load-basic', fin => {
-    make_bar_instance(fin).ready(function() {
-      this.act('role:foo,add:bar', function(err, out) {
-        this.act('role:foo,load:bar', { id: out.id }, function(err, out) {
+  // NEXT: bob can read public alice owned entity
+
+  it('spec-load-basic', (fin) => {
+    make_bar_instance(fin).ready(function () {
+      this.act('role:foo,add:bar', function (err, out) {
+        this.act('role:foo,load:bar', { id: out.id }, function (err, out) {
           expect(out.usr).equal('alice')
           expect(out.org).equal('wonderland')
 
@@ -133,13 +129,13 @@ describe('owner', function() {
             custom: {
               'sys-owner': {
                 usr: 'bob',
-                org: 'wonderland'
-              }
-            }
+                org: 'wonderland',
+              },
+            },
           })
 
           // bob can't read alice owned entity, even in same org
-          bob_instance.act('role:foo,load:bar', { id: out.id }, function(
+          bob_instance.act('role:foo,load:bar', { id: out.id }, function (
             err,
             out
           ) {
@@ -151,58 +147,67 @@ describe('owner', function() {
     })
   })
 
-  it('spec-load-field-match', fin => {
+  it('spec-load-field-match', (fin) => {
     var tmp = {}
 
     // w can have multiple values
-    make_bar_instance(null, { fields: ['w'] }).ready(function() {
+    make_bar_instance(null, { fields: ['w'] }).ready(function () {
       var w_instance = this.root.delegate(null, {
         custom: {
           'sys-owner': {
             usr: 'alice',
             org: 'wonderland',
-            w: [null, 1, 2]
-          }
-        }
+            w: [null, 1, 2],
+          },
+        },
       })
 
       w_instance
         .gate()
         // no w also works
-        .act('role:foo,add:bar', { data: { d: 1 } }, function(err, bar1) {
+        .act('role:foo,add:bar', { data: { d: 1 } }, function (err, bar1) {
           if (err) return fin(err)
           tmp.bar1 = bar1
         })
-        .act('role:foo,add:bar', { data: { d: 2, w: 1 } }, function(err, bar2) {
+        .act('role:foo,add:bar', { data: { d: 2, w: 1 } }, function (
+          err,
+          bar2
+        ) {
           if (err) return fin(err)
           tmp.bar2 = bar2
         })
-        .act('role:foo,add:bar', { data: { d: 3, w: 2 } }, function(err, bar3) {
+        .act('role:foo,add:bar', { data: { d: 3, w: 2 } }, function (
+          err,
+          bar3
+        ) {
           if (err) return fin(err)
           tmp.bar3 = bar3
         })
 
         // SHOULD FAIL
-        .act('role:foo,add:bar', { data: { d: 4, w: 3 } }, function(err, bar4) {
+        .act('role:foo,add:bar', { data: { d: 4, w: 3 } }, function (
+          err,
+          bar4
+        ) {
           expect(err).exist()
           expect(err.code).equal('create-not-allowed')
         })
-        .ready(function() {
+        .ready(function () {
           this.gate()
 
-            .act('role:foo,load:bar', { id: tmp.bar1.id }, function(err, out) {
+            .act('role:foo,load:bar', { id: tmp.bar1.id }, function (err, out) {
               if (err) return fin(err)
               expect(out).exists()
               expect(out.w).equals(null)
             })
 
-            .act('role:foo,load:bar', { id: tmp.bar2.id }, function(err, out) {
+            .act('role:foo,load:bar', { id: tmp.bar2.id }, function (err, out) {
               if (err) return fin(err)
               expect(out).exists()
               expect(out.w).equals(1)
             })
 
-            .act('role:foo,load:bar', { id: tmp.bar3.id }, function(err, out) {
+            .act('role:foo,load:bar', { id: tmp.bar3.id }, function (err, out) {
               if (err) return fin(err)
               expect(out).exists()
               expect(out.w).equals(2)
@@ -213,15 +218,15 @@ describe('owner', function() {
     })
   })
 
-  it('spec-load-field-match', fin => {
+  it('spec-load-field-match', (fin) => {
     var tmp = {}
 
     // w is only for reads, s for all modes, expect write
     make_bar_instance(fin, {
       fields: ['s'],
       read: { w: true },
-      write: { s: false }
-    }).ready(function() {
+      write: { s: false },
+    }).ready(function () {
       var writer = this
       var reader = this.root.delegate(null, {
         custom: {
@@ -229,38 +234,47 @@ describe('owner', function() {
             usr: 'alice',
             org: 'wonderland',
             w: 1,
-            s: 3
-          }
-        }
+            s: 3,
+          },
+        },
       })
 
       writer
         .gate()
-        .act('role:foo,add:bar', { data: { w: 1, s: 3 } }, function(err, bar1) {
+        .act('role:foo,add:bar', { data: { w: 1, s: 3 } }, function (
+          err,
+          bar1
+        ) {
           tmp.bar1 = bar1
         })
-        .act('role:foo,add:bar', { data: { w: 2, s: 3 } }, function(err, bar2) {
+        .act('role:foo,add:bar', { data: { w: 2, s: 3 } }, function (
+          err,
+          bar2
+        ) {
           tmp.bar2 = bar2
         })
-        .act('role:foo,add:bar', { data: { w: 1, s: 4 } }, function(err, bar3) {
+        .act('role:foo,add:bar', { data: { w: 1, s: 4 } }, function (
+          err,
+          bar3
+        ) {
           tmp.bar3 = bar3
         })
-        .ready(function() {
+        .ready(function () {
           reader
             .gate()
 
             // w=1,s=3 => can read
-            .act('role:foo,load:bar', { id: tmp.bar1.id }, function(err, out) {
+            .act('role:foo,load:bar', { id: tmp.bar1.id }, function (err, out) {
               expect(out.w).equals(1)
             })
 
             // w=2,s=3 => can't read
-            .act('role:foo,load:bar', { id: tmp.bar2.id }, function(err, out) {
+            .act('role:foo,load:bar', { id: tmp.bar2.id }, function (err, out) {
               expect(out).not.exists()
             })
 
             // w=1,s=4 => can't read
-            .act('role:foo,load:bar', { id: tmp.bar3.id }, function(err, out) {
+            .act('role:foo,load:bar', { id: tmp.bar3.id }, function (err, out) {
               expect(out).not.exists()
             })
 
@@ -269,13 +283,13 @@ describe('owner', function() {
     })
   })
 
-  it('spec-load-org', fin => {
+  it('spec-load-org', (fin) => {
     make_bar_instance(fin, {
       read: { usr: false },
-      write: { usr: false }
-    }).ready(function() {
-      this.act('role:foo,add:bar', { data: { w: 1 } }, function(err, out) {
-        this.act('role:foo,load:bar', { id: out.id }, function(err, out) {
+      write: { usr: false },
+    }).ready(function () {
+      this.act('role:foo,add:bar', { data: { w: 1 } }, function (err, out) {
+        this.act('role:foo,load:bar', { id: out.id }, function (err, out) {
           expect(out.usr).equal('alice')
           expect(out.org).equal('wonderland')
 
@@ -283,13 +297,13 @@ describe('owner', function() {
             custom: {
               'sys-owner': {
                 usr: 'bob',
-                org: 'wonderland'
-              }
-            }
+                org: 'wonderland',
+              },
+            },
           })
 
           // bob can read alice owned entity, in same org
-          bob_instance.act('role:foo,load:bar', { id: out.id }, function(
+          bob_instance.act('role:foo,load:bar', { id: out.id }, function (
             err,
             out
           ) {
@@ -303,10 +317,10 @@ describe('owner', function() {
     })
   })
 
-  it('spec-load-admin', fin => {
-    make_bar_instance(fin).ready(function() {
-      this.act('role:foo,add:bar', function(err, out) {
-        this.act('role:foo,load:bar', { id: out.id }, function(err, out) {
+  it('spec-load-admin', (fin) => {
+    make_bar_instance(fin).ready(function () {
+      this.act('role:foo,add:bar', function (err, out) {
+        this.act('role:foo,load:bar', { id: out.id }, function (err, out) {
           expect(out.usr).equal('alice')
           expect(out.org).equal('wonderland')
 
@@ -315,16 +329,16 @@ describe('owner', function() {
               'sys-owner': {
                 usr: 'cathy',
                 org: 'wonderland',
-                case$: 'admin'
-              }
-            }
+                case$: 'admin',
+              },
+            },
           })
 
           // admin *can* read alice owned entity, in same org
           admin_instance.act(
             'role:foo,load:bar',
             { y: 1, id: out.id },
-            function(err, out) {
+            function (err, out) {
               expect(out).exists()
               expect(out.usr).equal('alice')
               expect(out.org).equal('wonderland')
@@ -336,10 +350,10 @@ describe('owner', function() {
     })
   })
 
-  it('spec-inject-no-usr', fin => {
+  it('spec-inject-no-usr', (fin) => {
     var spec = { inject: { usr: false } }
-    make_bar_instance(fin, spec).ready(function() {
-      this.act('role:foo,add:bar', function(err, out) {
+    make_bar_instance(fin, spec).ready(function () {
+      this.act('role:foo,add:bar', function (err, out) {
         expect(out.usr).not.exists()
         expect(out.org).equal('wonderland')
         fin()
@@ -347,10 +361,10 @@ describe('owner', function() {
     })
   })
 
-  it('spec-inject-no-org', fin => {
+  it('spec-inject-no-org', (fin) => {
     var spec = { inject: { org: false } }
-    make_bar_instance(fin, spec).ready(function() {
-      this.act('role:foo,add:bar', function(err, out) {
+    make_bar_instance(fin, spec).ready(function () {
+      this.act('role:foo,add:bar', function (err, out) {
         expect(out.usr).equal('alice')
         expect(out.org).not.exists()
         fin()
@@ -358,10 +372,10 @@ describe('owner', function() {
     })
   })
 
-  it('spec-inject-no-usr-org', fin => {
+  it('spec-inject-no-usr-org', (fin) => {
     var spec = { inject: { usr: false, org: false } }
-    make_bar_instance(fin, spec).ready(function() {
-      this.act('role:foo,add:bar', function(err, out) {
+    make_bar_instance(fin, spec).ready(function () {
+      this.act('role:foo,add:bar', function (err, out) {
         expect(out.usr).not.exists()
         expect(out.org).not.exists()
         fin()
@@ -369,10 +383,10 @@ describe('owner', function() {
     })
   })
 
-  it('spec-inject-undef', fin => {
+  it('spec-inject-undef', (fin) => {
     var spec = { inject: { zed: true } }
-    make_bar_instance(fin, spec).ready(function() {
-      this.act('role:foo,add:bar', function(err, out) {
+    make_bar_instance(fin, spec).ready(function () {
+      this.act('role:foo,add:bar', function (err, out) {
         expect(out.usr).equal('alice')
         expect(out.org).equal('wonderland')
         expect(out.zed).not.exists()
@@ -381,7 +395,7 @@ describe('owner', function() {
     })
   })
 
-  it('org-scenario', fin => {
+  it('org-scenario', (fin) => {
     // grp0 fields assigns entity to group, but group is not checked by default
     var spec = {
       // require group match by default
@@ -389,7 +403,7 @@ describe('owner', function() {
         grp0: true,
 
         // must be set manually for special admin only access
-        admin_required: true
+        admin_required: true,
       },
 
       // require group match by default
@@ -397,19 +411,19 @@ describe('owner', function() {
         grp0: true,
 
         // must be set manually for special admin only access
-        admin_required: true
+        admin_required: true,
       },
 
       // add grp0 field automatically from owner
       inject: {
-        grp0: true
-      }
+        grp0: true,
+      },
     }
 
     make_bar_instance(fin, spec, true)
       .act('sys:owner,hook:case,case:group', {
         modifiers: {
-          query: function(spec, owner) {
+          query: function (spec, owner) {
             owner.grp0 = owner.group
 
             // if admin or staff, then ignore usr and group
@@ -421,19 +435,19 @@ describe('owner', function() {
             }
 
             return spec
-          }
-        }
+          },
+        },
       })
-      .ready(function() {
+      .ready(function () {
         var cathy_admin_org0 = this.root.delegate(null, {
           custom: {
             'sys-owner': {
               usr: 'cathy',
               org: 'org0',
               group: 'admin',
-              case$: 'group'
-            }
-          }
+              case$: 'group',
+            },
+          },
         })
 
         var bob_admin_org1 = this.root.delegate(null, {
@@ -442,9 +456,9 @@ describe('owner', function() {
               usr: 'bob',
               org: 'org1',
               group: 'admin',
-              case$: 'group'
-            }
-          }
+              case$: 'group',
+            },
+          },
         })
 
         var alice_staff_org0 = this.root.delegate(null, {
@@ -453,9 +467,9 @@ describe('owner', function() {
               usr: 'alice',
               org: 'org0',
               group: 'staff',
-              case$: 'group'
-            }
-          }
+              case$: 'group',
+            },
+          },
         })
 
         var derek_staff_org1 = this.root.delegate(null, {
@@ -464,9 +478,9 @@ describe('owner', function() {
               usr: 'derek',
               org: 'org1',
               group: 'staff',
-              case$: 'group'
-            }
-          }
+              case$: 'group',
+            },
+          },
         })
 
         var evan_guest_org0 = this.root.delegate(null, {
@@ -475,9 +489,9 @@ describe('owner', function() {
               usr: 'evan',
               org: 'org0',
               group: 'guest',
-              case$: 'group'
-            }
-          }
+              case$: 'group',
+            },
+          },
         })
 
         var frank_helper_org0 = this.root.delegate(null, {
@@ -486,9 +500,9 @@ describe('owner', function() {
               usr: 'frank',
               org: 'org0',
               group: 'helper',
-              case$: 'group'
-            }
-          }
+              case$: 'group',
+            },
+          },
         })
 
         var imogen_helper_org0 = this.root.delegate(null, {
@@ -497,54 +511,55 @@ describe('owner', function() {
               usr: 'imogen',
               org: 'org0',
               group: 'helper',
-              case$: 'group'
-            }
-          }
+              case$: 'group',
+            },
+          },
         })
 
         var tmp = {}
 
-        alice_staff_org0.act('role:foo,add:bar', { data: { d: 0 } }, function(
+        alice_staff_org0.act('role:foo,add:bar', { data: { d: 0 } }, function (
           err,
           d0
         ) {
           tmp.d0 = d0
         })
 
-        frank_helper_org0.act('role:foo,add:bar', { data: { d: 1 } }, function(
+        frank_helper_org0.act('role:foo,add:bar', { data: { d: 1 } }, function (
           err,
           d1
         ) {
           tmp.d1 = d1
         })
 
-        imogen_helper_org0.act('role:foo,add:bar', { data: { d: 2 } }, function(
-          err,
-          d2
-        ) {
-          tmp.d2 = d2
-        })
+        imogen_helper_org0.act(
+          'role:foo,add:bar',
+          { data: { d: 2 } },
+          function (err, d2) {
+            tmp.d2 = d2
+          }
+        )
 
-        derek_staff_org1.act('role:foo,add:bar', { data: { d: 3 } }, function(
+        derek_staff_org1.act('role:foo,add:bar', { data: { d: 3 } }, function (
           err,
           d3
         ) {
           tmp.d3 = d3
         })
 
-        cathy_admin_org0.act('role:foo,add:bar', { data: { d: 4 } }, function(
+        cathy_admin_org0.act('role:foo,add:bar', { data: { d: 4 } }, function (
           err,
           d4
         ) {
           tmp.d4 = d4
         })
 
-        alice_staff_org0.ready(function() {
-          bob_admin_org1.ready(function() {
-            cathy_admin_org0.ready(function() {
-              derek_staff_org1.ready(function() {
-                evan_guest_org0.ready(function() {
-                  frank_helper_org0.ready(function() {
+        alice_staff_org0.ready(function () {
+          bob_admin_org1.ready(function () {
+            cathy_admin_org0.ready(function () {
+              derek_staff_org1.ready(function () {
+                evan_guest_org0.ready(function () {
+                  frank_helper_org0.ready(function () {
                     imogen_helper_org0.ready(validate)
                   })
                 })
@@ -558,31 +573,31 @@ describe('owner', function() {
             d: 0,
             usr: 'alice',
             org: 'org0',
-            grp0: 'staff'
+            grp0: 'staff',
           })
           expect(tmp.d1).includes({
             d: 1,
             usr: 'frank',
             org: 'org0',
-            grp0: 'helper'
+            grp0: 'helper',
           })
           expect(tmp.d2).includes({
             d: 2,
             usr: 'imogen',
             org: 'org0',
-            grp0: 'helper'
+            grp0: 'helper',
           })
           expect(tmp.d3).includes({
             d: 3,
             usr: 'derek',
             org: 'org1',
-            grp0: 'staff'
+            grp0: 'staff',
           })
           expect(tmp.d4).includes({
             d: 4,
             usr: 'cathy',
             org: 'org0',
-            grp0: 'admin'
+            grp0: 'admin',
           })
 
           validate_alice_staff_org0(
@@ -806,9 +821,9 @@ describe('owner', function() {
       })
   })
 
-  it('group-scenario', fin => {
+  it('group-scenario', (fin) => {
     var spec = {
-      fields: ['group']
+      fields: ['group'],
     }
 
     function error_handler(err) {
@@ -827,7 +842,7 @@ describe('owner', function() {
     make_bar_instance(error_handler, spec, true)
       .act('sys:owner,hook:case,case:group', {
         modifiers: {
-          query: function(spec, owner, msg) {
+          query: function (spec, owner, msg) {
             // admin group queries ignore usr and group
             if (owner.group.includes('admin')) {
               spec.read.usr = false
@@ -855,15 +870,15 @@ describe('owner', function() {
             return spec
           },
 
-          list: function(spec, owner, msg, list) {
+          list: function (spec, owner, msg, list) {
             // if not admin, remove anything in admin group
             if (!owner.group.includes('admin')) {
-              list = list.filter(x => 'admin' != x.group)
+              list = list.filter((x) => 'admin' != x.group)
             }
             return list
           },
 
-          entity: function(spec, owner, msg, ent) {
+          entity: function (spec, owner, msg, ent) {
             if (ent && ent.group) {
               // if user in group of entity, then can access even if not owner
               if (owner.group.includes(ent.group)) {
@@ -879,20 +894,20 @@ describe('owner', function() {
             }
 
             return spec
-          }
-        }
+          },
+        },
       })
 
-      .ready(function() {
+      .ready(function () {
         var cathy_admin_org0 = this.root.delegate(null, {
           custom: {
             'sys-owner': {
               usr: 'cathy',
               org: 'org0',
               group: ['admin', 'staff'],
-              case$: 'group'
-            }
-          }
+              case$: 'group',
+            },
+          },
         })
 
         var bob_root_org0 = this.root.delegate(null, {
@@ -900,12 +915,12 @@ describe('owner', function() {
             'sys-owner': {
               usr: 'bob',
               org: 'org0',
-              group: []
+              group: [],
             },
             'sys-owner-spec': {
-              active: false
-            }
-          }
+              active: false,
+            },
+          },
         })
 
         var alice_staff_org0 = this.root.delegate(null, {
@@ -914,9 +929,9 @@ describe('owner', function() {
               usr: 'alice',
               org: 'org0',
               group: ['staff'],
-              case$: 'group'
-            }
-          }
+              case$: 'group',
+            },
+          },
         })
 
         var evan_guest_org0 = this.root.delegate(null, {
@@ -925,9 +940,9 @@ describe('owner', function() {
               usr: 'evan',
               org: 'org0',
               group: ['guest'],
-              case$: 'group'
-            }
-          }
+              case$: 'group',
+            },
+          },
         })
 
         var frank_helper_org0 = this.root.delegate(null, {
@@ -936,9 +951,9 @@ describe('owner', function() {
               usr: 'frank',
               org: 'org0',
               group: [null, 'helper'],
-              case$: 'group'
-            }
-          }
+              case$: 'group',
+            },
+          },
         })
 
         var imogen_helper_org0 = this.root.delegate(null, {
@@ -947,9 +962,9 @@ describe('owner', function() {
               usr: 'imogen',
               org: 'org0',
               group: [null, 'helper'],
-              case$: 'group'
-            }
-          }
+              case$: 'group',
+            },
+          },
         })
 
         var tmp = {}
@@ -957,7 +972,7 @@ describe('owner', function() {
         alice_staff_org0.act(
           'role:foo,add:bar',
           { data: { id$: 'd0', d: 0 } },
-          function(err, d0) {
+          function (err, d0) {
             tmp.d0 = d0
           }
         )
@@ -965,7 +980,7 @@ describe('owner', function() {
         frank_helper_org0.act(
           'role:foo,add:bar',
           { data: { id$: 'd1', d: 1, group: 'helper' } },
-          function(err, d1) {
+          function (err, d1) {
             tmp.d1 = d1
           }
         )
@@ -973,7 +988,7 @@ describe('owner', function() {
         imogen_helper_org0.act(
           'role:foo,add:bar',
           { data: { id$: 'd2', d: 2, group: 'helper' } },
-          function(err, d2) {
+          function (err, d2) {
             tmp.d2 = d2
           }
         )
@@ -981,7 +996,7 @@ describe('owner', function() {
         cathy_admin_org0.act(
           'role:foo,add:bar',
           { data: { id$: 'd4', d: 4 } },
-          function(err, d4) {
+          function (err, d4) {
             tmp.d4 = d4
           }
         )
@@ -989,7 +1004,7 @@ describe('owner', function() {
         frank_helper_org0.act(
           'role:foo,add:bar',
           { data: { id$: 'd5', d: 5 } },
-          function(err, d5) {
+          function (err, d5) {
             tmp.d5 = d5
           }
         )
@@ -997,15 +1012,15 @@ describe('owner', function() {
         imogen_helper_org0.act(
           'role:foo,add:bar',
           { data: { id$: 'd7', d: 7 } },
-          function(err, d7) {
+          function (err, d7) {
             tmp.d7 = d7
           }
         )
 
-        alice_staff_org0.ready(function() {
-          cathy_admin_org0.ready(function() {
-            evan_guest_org0.ready(function() {
-              frank_helper_org0.ready(function() {
+        alice_staff_org0.ready(function () {
+          cathy_admin_org0.ready(function () {
+            evan_guest_org0.ready(function () {
+              frank_helper_org0.ready(function () {
                 imogen_helper_org0.ready(validate)
               })
             })
@@ -1017,40 +1032,40 @@ describe('owner', function() {
             d: 0,
             group: 'staff',
             org: 'org0',
-            usr: 'alice'
+            usr: 'alice',
           })
 
           expect(tmp.d1).includes({
             d: 1,
             group: 'helper',
             org: 'org0',
-            usr: 'frank'
+            usr: 'frank',
           })
           expect(tmp.d5).includes({
             d: 5,
             group: null,
             org: 'org0',
-            usr: 'frank'
+            usr: 'frank',
           })
 
           expect(tmp.d2).includes({
             d: 2,
             group: 'helper',
             org: 'org0',
-            usr: 'imogen'
+            usr: 'imogen',
           })
           expect(tmp.d7).includes({
             d: 7,
             group: null,
             org: 'org0',
-            usr: 'imogen'
+            usr: 'imogen',
           })
 
           expect(tmp.d4).includes({
             d: 4,
             group: 'admin',
             org: 'org0',
-            usr: 'cathy'
+            usr: 'cathy',
           })
 
           // TODO: evan, imogen
@@ -1063,7 +1078,7 @@ describe('owner', function() {
           )()
 
           function validate_cathy_admin_org0(done) {
-            return function() {
+            return function () {
               // admin of org0 can access all of org0
               cathy_admin_org0
                 .gate()
@@ -1104,15 +1119,15 @@ describe('owner', function() {
                   allowed('cathy-update-d1', { d: 1, v: 1 })
                 )
 
-                .act('role:mem-store,cmd:dump', function(err, out) {
+                .act('role:mem-store,cmd:dump', function (err, out) {
                   //console.log('DATA cathy')
                   //console.dir(out,{depth:3})
                 })
 
-                .ready(function() {
+                .ready(function () {
                   var d999 = this.make('core/bar').data$({ d: 999 })
                   d999.id = 'd999'
-                  d999.save$(function(err) {
+                  d999.save$(function (err) {
                     expect(err.code).equal('save-not-found')
                     done()
                   })
@@ -1121,7 +1136,7 @@ describe('owner', function() {
           }
 
           function validate_bob_root_org0(done) {
-            return function() {
+            return function () {
               // owner not active
               bob_root_org0
                 .gate()
@@ -1166,7 +1181,7 @@ describe('owner', function() {
           }
 
           function validate_alice_staff_org0(done) {
-            return function() {
+            return function () {
               // alice does not have access to d4 as admin group
               alice_staff_org0
                 .gate()
@@ -1220,7 +1235,7 @@ describe('owner', function() {
                   denied('alice-update-d1-usr', 'update-not-allowed')
                 )
 
-                .act('role:mem-store,cmd:dump', function(err, out) {
+                .act('role:mem-store,cmd:dump', function (err, out) {
                   //console.log('DATA alice')
                   //console.dir(out,{depth:3})
                 })
@@ -1230,7 +1245,7 @@ describe('owner', function() {
           }
 
           function validate_frank_helper_org0(done) {
-            return function() {
+            return function () {
               // helper of org0 can access own data and helper data
               frank_helper_org0
                 .gate()
@@ -1359,8 +1374,8 @@ describe('owner', function() {
                   denied('frank-update-d7')
                 )
 
-                .act('role:mem-store,cmd:dump', function(err, out) {
-                  Object.keys(out.core.bar).forEach(id => {
+                .act('role:mem-store,cmd:dump', function (err, out) {
+                  Object.keys(out.core.bar).forEach((id) => {
                     delete out.core.bar[id].x
                   })
 
@@ -1373,7 +1388,7 @@ describe('owner', function() {
                           group: 'staff',
                           org: 'org0',
                           usr: 'alice',
-                          id: 'd0'
+                          id: 'd0',
                         },
                         d1: {
                           entity$: '-/core/bar',
@@ -1382,7 +1397,7 @@ describe('owner', function() {
                           org: 'org0',
                           usr: 'frank',
                           id: 'd1',
-                          v: 3
+                          v: 3,
                         },
                         d2: {
                           entity$: '-/core/bar',
@@ -1391,7 +1406,7 @@ describe('owner', function() {
                           org: 'org0',
                           usr: 'imogen',
                           id: 'd2',
-                          v: 1
+                          v: 1,
                         },
                         d4: {
                           entity$: '-/core/bar',
@@ -1399,7 +1414,7 @@ describe('owner', function() {
                           group: 'admin',
                           org: 'org0',
                           usr: 'cathy',
-                          id: 'd4'
+                          id: 'd4',
                         },
                         d5: {
                           entity$: '-/core/bar',
@@ -1407,7 +1422,7 @@ describe('owner', function() {
                           group: null,
                           org: 'org0',
                           usr: 'frank',
-                          id: 'd5'
+                          id: 'd5',
                         },
                         d7: {
                           entity$: '-/core/bar',
@@ -1416,10 +1431,10 @@ describe('owner', function() {
                           org: 'org0',
                           usr: 'imogen',
                           id: 'd7',
-                          v: 1
-                        }
-                      }
-                    }
+                          v: 1,
+                        },
+                      },
+                    },
                   })
                 })
 
@@ -1428,7 +1443,7 @@ describe('owner', function() {
           }
 
           function validate_imogen_helper_org0(done) {
-            return function() {
+            return function () {
               // helper of org0 can access own data and helper data
               imogen_helper_org0
                 .gate()
@@ -1482,7 +1497,7 @@ describe('owner', function() {
                   denied('imogen-remove-d5')
                 )
 
-                .act('role:mem-store,cmd:dump', function(err, out) {
+                .act('role:mem-store,cmd:dump', function (err, out) {
                   expect(out).includes({
                     core: {
                       bar: {
@@ -1492,7 +1507,7 @@ describe('owner', function() {
                           group: 'staff',
                           org: 'org0',
                           usr: 'alice',
-                          id: 'd0'
+                          id: 'd0',
                         },
                         d4: {
                           entity$: '-/core/bar',
@@ -1500,7 +1515,7 @@ describe('owner', function() {
                           group: 'admin',
                           org: 'org0',
                           usr: 'cathy',
-                          id: 'd4'
+                          id: 'd4',
                         },
                         d5: {
                           entity$: '-/core/bar',
@@ -1508,10 +1523,10 @@ describe('owner', function() {
                           group: null,
                           org: 'org0',
                           usr: 'frank',
-                          id: 'd5'
-                        }
-                      }
-                    }
+                          id: 'd5',
+                        },
+                      },
+                    },
                   })
                 })
                 .ready(done)
@@ -1521,11 +1536,11 @@ describe('owner', function() {
       })
   })
 
-  it('intern', fin => {
+  it('intern', (fin) => {
     Seneca({ legacy: { transport: false } })
       .test(fin)
       .use(Plugin)
-      .ready(function() {
+      .ready(function () {
         expect(Plugin.intern.default_spec).exists()
         expect(Plugin.intern.deepextend).exists()
 
@@ -1558,7 +1573,7 @@ function make_it(lab) {
     lab.it(
       name,
       opts,
-      Util.promisify(function(x, fin) {
+      Util.promisify(function (x, fin) {
         func(fin)
       })
     )
@@ -1566,7 +1581,7 @@ function make_it(lab) {
 }
 
 function allowed(mark, data) {
-  return function(err, out) {
+  return function (err, out) {
     //console.log('ALLOWED '+mark)
     expect(err).not.exists()
 
@@ -1574,7 +1589,7 @@ function allowed(mark, data) {
       expect(out).exists()
 
       if ('string' === typeof data) {
-        expect(out.map(x => '' + x.d).join('')).equal(data)
+        expect(out.map((x) => '' + x.d).join('')).equal(data)
       } else {
         expect(out).includes(data)
       }
@@ -1583,7 +1598,7 @@ function allowed(mark, data) {
 }
 
 function denied(mark, err_code) {
-  return function(err, out) {
+  return function (err, out) {
     //console.log('DENIED  '+mark)
     expect(out).not.exists()
     if (err_code) {

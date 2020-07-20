@@ -34,6 +34,11 @@ module.exports.defaults = {
       // default false
       //usr: false,
       //org: false
+    },
+    public: {
+      read: {
+        // field -> public boolean field
+      }
     }
   }),
 
@@ -366,47 +371,6 @@ const intern = (owner.intern = {
     return spec
   },
 
-  /*
-  refine_query: function(seneca: any, msg: any, queryprop: any, spec: any, owner: any) {
-    msg[queryprop] = msg[queryprop] || {}
-    spec.fields.forEach(function(f: any) {
-      if (spec.read[f]) {
-        if (Array.isArray(owner[f])) {
-          if (null == msg[queryprop][f]) {
-            //msg[queryprop][f] = owner[f][0]
-            msg[queryprop][f] = owner[f] // seneca store must support $in-style queries
-          } else if (Array.isArray(msg[queryprop][f])) {
-            // need an intersection to match
-
-            var merge_uniq = [...new Set([...owner[f], ...msg[queryprop][f]])]
-
-            // no intersection if no common values
-            if (merge_uniq.length === owner[f].length + msg[queryprop][f].length) {
-              seneca.fail('field-values-not-valid', {
-                field: f,
-                query_val: msg[queryprop][f],
-                valid_owner_vals: owner[f]
-              })
-            }
-          } else if (!owner[f].includes(msg[queryprop][f])) {
-            seneca.fail('field-not-valid', {
-              field: f,
-              query_val: msg[queryprop][f],
-              valid_owner_vals: owner[f]
-            })
-          }
-        } else {
-          msg[queryprop][f] = owner[f]
-        }
-
-        // remove from query if value is null
-        if (null == msg[queryprop][f]) {
-          delete msg[queryprop][f]
-        }
-      }
-    })
-  },
-  */
 
   match: function(matching_val: any, check_val: any) {
     // match if check_val (from ent) is undefined (thus not considered), or

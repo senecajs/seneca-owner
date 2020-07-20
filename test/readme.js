@@ -8,28 +8,28 @@ require('seneca')
       'role:entity,cmd:save,base:zed',
       'role:entity,cmd:load,base:zed',
       'role:entity,cmd:list,base:zed',
-      'role:entity,cmd:remove,base:zed'
-    ]
+      'role:entity,cmd:remove,base:zed',
+    ],
   })
-  .ready(async function() {
+  .ready(async function () {
     // Set custom property to identify user
 
     var alice_instance = this.delegate(null, {
       custom: {
         'sys-owner': {
           usr: 'alice',
-          org: 'wonderland'
-        }
-      }
+          org: 'wonderland',
+        },
+      },
     })
 
     var bob_instance = this.delegate(null, {
       custom: {
         'sys-owner': {
           usr: 'bob',
-          org: 'wonderland'
-        }
-      }
+          org: 'wonderland',
+        },
+      },
     })
 
     // Save some entities
