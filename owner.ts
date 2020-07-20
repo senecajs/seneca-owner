@@ -368,6 +368,9 @@ const intern = (owner.intern = {
         spec.fields = [...new Set(spec.fields.concat(Object.keys(spec[m])))]
       })
 
+    spec.public = spec.public || {}
+    spec.public.read = spec.public.read || {}
+
     return spec
   },
 

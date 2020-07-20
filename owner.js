@@ -300,6 +300,8 @@ const intern = (owner.intern = {
         ['write', 'read', 'inject', 'alter'].forEach(m => {
             spec.fields = [...new Set(spec.fields.concat(Object.keys(spec[m])))];
         });
+        spec.public = spec.public || {};
+        spec.public.read = spec.public.read || {};
         return spec;
     },
     match: function (matching_val, check_val) {
