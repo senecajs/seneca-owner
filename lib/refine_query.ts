@@ -3,9 +3,12 @@
 
 export function refine_query(seneca: any, msg: any, queryprop: any, spec: any, owner: any) {
   let q: any = (msg[queryprop] = msg[queryprop] || {})
-  let public_field = spec.public.read['*']
+  let public_field = spec.public ? spec.public.read['*'] : null
 
-  // public data, regardless of ownership fields
+  // console.log('RQ A', public_field, q)
+
+  // List public data, regardless of ownership fields. Note that the
+  // public flag field is in the query, so excludes private data!
   if (null != public_field && true === !!(q[public_field])) {
     return
   }
@@ -51,4 +54,6 @@ export function refine_query(seneca: any, msg: any, queryprop: any, spec: any, o
       delete q[owner_field]
     }
   }
+
+  //console.log('RQ Z', q)
 }
