@@ -3,7 +3,10 @@
 
 export function refine_query(seneca: any, msg: any, queryprop: any, spec: any, owner: any) {
   let q: any = (msg[queryprop] = msg[queryprop] || {})
-  let public_field = spec.public ? spec.public.read['*'] : null
+
+  // backwards compat
+  spec.public = spec.public || { read: {} }
+  let public_field = spec.public.read['*']
 
   // console.log('RQ A', public_field, q)
 

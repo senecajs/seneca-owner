@@ -1,6 +1,6 @@
 {
   "name": "@seneca/owner",
-  "version": "5.1.0",
+  "version": "5.1.1",
   "description": "Seneca plugin to add user ownership annotations to entities.",
   "main": "owner.js",
   "scripts": {
