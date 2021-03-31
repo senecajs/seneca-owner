@@ -135,13 +135,14 @@ describe('owner', function () {
           })
 
           // bob can't read alice owned entity, even in same org
-          bob_instance.act('role:foo,load:bar', { id: out.id }, function (
-            err,
-            out
-          ) {
-            expect(out).not.exists()
-            fin()
-          })
+          bob_instance.act(
+            'role:foo,load:bar',
+            { id: out.id },
+            function (err, out) {
+              expect(out).not.exists()
+              fin()
+            }
+          )
         })
       })
     })
@@ -169,29 +170,32 @@ describe('owner', function () {
           if (err) return fin(err)
           tmp.bar1 = bar1
         })
-        .act('role:foo,add:bar', { data: { d: 2, w: 1 } }, function (
-          err,
-          bar2
-        ) {
-          if (err) return fin(err)
-          tmp.bar2 = bar2
-        })
-        .act('role:foo,add:bar', { data: { d: 3, w: 2 } }, function (
-          err,
-          bar3
-        ) {
-          if (err) return fin(err)
-          tmp.bar3 = bar3
-        })
+        .act(
+          'role:foo,add:bar',
+          { data: { d: 2, w: 1 } },
+          function (err, bar2) {
+            if (err) return fin(err)
+            tmp.bar2 = bar2
+          }
+        )
+        .act(
+          'role:foo,add:bar',
+          { data: { d: 3, w: 2 } },
+          function (err, bar3) {
+            if (err) return fin(err)
+            tmp.bar3 = bar3
+          }
+        )
 
         // SHOULD FAIL
-        .act('role:foo,add:bar', { data: { d: 4, w: 3 } }, function (
-          err,
-          bar4
-        ) {
-          expect(err).exist()
-          expect(err.code).equal('create-not-allowed')
-        })
+        .act(
+          'role:foo,add:bar',
+          { data: { d: 4, w: 3 } },
+          function (err, bar4) {
+            expect(err).exist()
+            expect(err.code).equal('create-not-allowed')
+          }
+        )
         .ready(function () {
           this.gate()
 
@@ -241,24 +245,27 @@ describe('owner', function () {
 
       writer
         .gate()
-        .act('role:foo,add:bar', { data: { w: 1, s: 3 } }, function (
-          err,
-          bar1
-        ) {
-          tmp.bar1 = bar1
-        })
-        .act('role:foo,add:bar', { data: { w: 2, s: 3 } }, function (
-          err,
-          bar2
-        ) {
-          tmp.bar2 = bar2
-        })
-        .act('role:foo,add:bar', { data: { w: 1, s: 4 } }, function (
-          err,
-          bar3
-        ) {
-          tmp.bar3 = bar3
-        })
+        .act(
+          'role:foo,add:bar',
+          { data: { w: 1, s: 3 } },
+          function (err, bar1) {
+            tmp.bar1 = bar1
+          }
+        )
+        .act(
+          'role:foo,add:bar',
+          { data: { w: 2, s: 3 } },
+          function (err, bar2) {
+            tmp.bar2 = bar2
+          }
+        )
+        .act(
+          'role:foo,add:bar',
+          { data: { w: 1, s: 4 } },
+          function (err, bar3) {
+            tmp.bar3 = bar3
+          }
+        )
         .ready(function () {
           reader
             .gate()
@@ -303,15 +310,16 @@ describe('owner', function () {
           })
 
           // bob can read alice owned entity, in same org
-          bob_instance.act('role:foo,load:bar', { id: out.id }, function (
-            err,
-            out
-          ) {
-            expect(out.usr).equal('alice')
-            expect(out.org).equal('wonderland')
+          bob_instance.act(
+            'role:foo,load:bar',
+            { id: out.id },
+            function (err, out) {
+              expect(out.usr).equal('alice')
+              expect(out.org).equal('wonderland')
 
-            fin()
-          })
+              fin()
+            }
+          )
         })
       })
     })
@@ -518,19 +526,21 @@ describe('owner', function () {
 
         var tmp = {}
 
-        alice_staff_org0.act('role:foo,add:bar', { data: { d: 0 } }, function (
-          err,
-          d0
-        ) {
-          tmp.d0 = d0
-        })
+        alice_staff_org0.act(
+          'role:foo,add:bar',
+          { data: { d: 0 } },
+          function (err, d0) {
+            tmp.d0 = d0
+          }
+        )
 
-        frank_helper_org0.act('role:foo,add:bar', { data: { d: 1 } }, function (
-          err,
-          d1
-        ) {
-          tmp.d1 = d1
-        })
+        frank_helper_org0.act(
+          'role:foo,add:bar',
+          { data: { d: 1 } },
+          function (err, d1) {
+            tmp.d1 = d1
+          }
+        )
 
         imogen_helper_org0.act(
           'role:foo,add:bar',
@@ -540,19 +550,21 @@ describe('owner', function () {
           }
         )
 
-        derek_staff_org1.act('role:foo,add:bar', { data: { d: 3 } }, function (
-          err,
-          d3
-        ) {
-          tmp.d3 = d3
-        })
+        derek_staff_org1.act(
+          'role:foo,add:bar',
+          { data: { d: 3 } },
+          function (err, d3) {
+            tmp.d3 = d3
+          }
+        )
 
-        cathy_admin_org0.act('role:foo,add:bar', { data: { d: 4 } }, function (
-          err,
-          d4
-        ) {
-          tmp.d4 = d4
-        })
+        cathy_admin_org0.act(
+          'role:foo,add:bar',
+          { data: { d: 4 } },
+          function (err, d4) {
+            tmp.d4 = d4
+          }
+        )
 
         alice_staff_org0.ready(function () {
           bob_admin_org1.ready(function () {
