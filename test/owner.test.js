@@ -33,7 +33,7 @@ function make_bar_instance(fin, spec, explain) {
         ],
       })
       .ready(function () {
-        var make_spec = this.export('owner/make_spec')
+        var make_spec = this.export('Owner/make_spec')
         var full_spec = make_spec(spec)
 
         this.act('sys:owner,hook:case,case:admin', {

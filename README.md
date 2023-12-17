@@ -79,6 +79,38 @@ For an example showing groups with custom permissions, see the
 `group-scenario` unit test.
 
 
+
+<!--START:options-->
+<!--END:options-->
+
+<!--START:action-list-->
+
+
+## Action Patterns
+
+* [hook:case,sys:owner](#-hookcasesysowner-)
+
+
+<!--END:action-list-->
+
+<!--START:action-desc-->
+
+
+## Action Descriptions
+
+### &laquo; `hook:case,sys:owner` &raquo;
+
+No description provided.
+
+
+
+----------
+
+
+<!--END:action-desc-->
+
+
+
 ## Debugging
 
 Ownership rules can become complex. To debug individual use-cases, in production or otherwise, use the `Seneca.explain` feature.

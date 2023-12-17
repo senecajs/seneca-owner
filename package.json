@@ -2,9 +2,9 @@
   "name": "@seneca/owner",
   "version": "5.2.0",
   "description": "Seneca plugin to add user ownership annotations to entities.",
-  "main": "dist/owner.js",
+  "main": "dist/Owner.js",
   "type": "commonjs",
-  "types": "dist/owner.d.ts",
+  "types": "dist/Owner.d.ts",
   "scripts": {
     "watch": "tsc -w -d",
     "build": "tsc -d",
@@ -13,7 +13,8 @@
     "prettier": "prettier --write --no-semi --single-quote *.js lib/*.js test/*.js",
     "coveralls": "lab -s -P test -r lcov | coveralls",
     "coverage": "lab -v -P test -r html > coverage.html",
-    "clean": "rm -rf node_modules package-lock.json yarn.lock",
+    "doc": "seneca-doc",
+    "clean": "rm -rf node_modules package-lock.json yarn.lock dist",
     "reset": "npm run clean && npm i && npm run build && npm test",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
     "repo-publish": "npm run clean && npm i --registry http://registry.npmjs.org && npm run repo-publish-quick",
@@ -21,14 +22,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/voxgig/seneca-owner.git"
+    "url": "git+https://github.com/senecajs/seneca-owner.git"
   },
   "author": "Richard Rodger (richardrodger.com)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/voxgig/seneca-owner/issues"
+    "url": "https://github.com/senecajs/seneca-owner/issues"
   },
-  "homepage": "https://github.com/voxgig/seneca-owner#readme",
+  "homepage": "https://github.com/senecajs/seneca-owner#readme",
   "files": [
     "LICENSE",
     "README.md",
@@ -39,6 +40,7 @@
     "@hapi/joi": "^17.1.1"
   },
   "devDependencies": {
+    "seneca-doc": "^2.1.3",
     "@hapi/code": "^9.0.3",
     "@hapi/lab": "^25.1.3",
     "@types/hapi__joi": "^17.1.14",
@@ -51,5 +53,10 @@
     "seneca-plugin-validator": "^0.6.1",
     "seneca-promisify": "^3.7.1",
     "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "seneca": ">=3",
+    "seneca-entity": ">=25",
+    "seneca-promisify": ">=3"
   }
 }
