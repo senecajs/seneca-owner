@@ -102,7 +102,7 @@ function owner(options) {
             if (spec.active) {
                 if ('list' === msg.cmd) {
                     explain && (expdata.path = 'list');
-                    refine_query_1.refine_query(self, msg, queryprop, spec, owner);
+                    (0, refine_query_1.refine_query)(self, msg, queryprop, spec, owner);
                     explain && (expdata.query = msg[queryprop]);
                     return self.prior(msg, function (err, list) {
                         if (err)
@@ -122,7 +122,7 @@ function owner(options) {
                 // handle remove operation
                 else if ('remove' === msg.cmd) {
                     explain && (expdata.path = 'remove');
-                    refine_query_1.refine_query(self, msg, queryprop, spec, owner);
+                    (0, refine_query_1.refine_query)(self, msg, queryprop, spec, owner);
                     explain && (expdata.query = msg[queryprop]);
                     self.make(msg.ent.entity$).list$(msg.q, function (err, list) {
                         if (err)
@@ -152,7 +152,7 @@ function owner(options) {
                     explain && (expdata.path = 'load');
                     // only change query if not loading by id - preserves caching!
                     if (null == msg[queryprop].id) {
-                        refine_query_1.refine_query(self, msg, queryprop, spec, owner);
+                        (0, refine_query_1.refine_query)(self, msg, queryprop, spec, owner);
                         explain && (expdata.query = msg[queryprop]);
                     }
                     self.prior(msg, function (err, load_ent) {

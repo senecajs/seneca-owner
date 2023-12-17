@@ -617,7 +617,9 @@ describe('owner', function () {
               validate_cathy_admin_org0(
                 validate_derek_staff_org1(
                   validate_evan_guest_org0(
-                    validate_frank_helper_org0(validate_imogen_helper_org0(fin))
+                    validate_frank_helper_org0(
+                      validate_imogen_helper_org0(fin)
+                    )
                   )
                 )
               )
@@ -628,7 +630,8 @@ describe('owner', function () {
             // admin of org0 can access all of org0, nothing in org1
             cathy_admin_org0
               .gate()
-              .act('role:foo,list:bar', null, allowed('cathy-list', '0124'))
+            // .act('role:foo,list:bar', null, allowed('cathy-list', '0124'))
+            .act('role:foo,list:bar', allowed('cathy-list', '0124'))
               .act(
                 'role:foo,load:bar',
                 { id: tmp.d0.id },
@@ -661,7 +664,8 @@ describe('owner', function () {
             // staff of org0 can access all of org0, nothing in org1
             alice_staff_org0
               .gate()
-              .act('role:foo,list:bar', null, allowed('alice-list', '0124'))
+              // .act('role:foo,list:bar', null, allowed('alice-list', '0124'))
+              .act('role:foo,list:bar', allowed('alice-list', '0124'))
               .act(
                 'role:foo,load:bar',
                 { id: tmp.d0.id },
@@ -691,10 +695,13 @@ describe('owner', function () {
           }
 
           function validate_frank_helper_org0(done) {
+            // console.log('validate_frank_helper_org0')
+            
             // helper of org0 can access only own data, nothing in org1
             frank_helper_org0
               .gate()
-              .act('role:foo,list:bar', null, allowed('frank-list', '1'))
+            // .act('role:foo,list:bar', null, allowed('frank-list', '1'))
+              .act('role:foo,list:bar', allowed('frank-list', '1'))
               .act(
                 'role:foo,load:bar',
                 { id: tmp.d0.id },
@@ -722,7 +729,8 @@ describe('owner', function () {
             // admin of org1 can access all of org1, nothing in org0
             bob_admin_org1
               .gate()
-              .act('role:foo,list:bar', null, allowed('bob-list', '3'))
+            // .act('role:foo,list:bar', null, allowed('bob-list', '3'))
+              .act('role:foo,list:bar', allowed('bob-list', '3'))
               .act(
                 'role:foo,load:bar',
                 { id: tmp.d0.id },
@@ -748,9 +756,14 @@ describe('owner', function () {
 
           function validate_imogen_helper_org0(done) {
             // helper of org0 can access only own data, nothing in org1
+
+            let allowed_imogen_list = allowed('imogen-list', '2')
+            // console.log('allowed_imogen_list', allowed_imogen_list)
+            
             imogen_helper_org0
               .gate()
-              .act('role:foo,list:bar', null, allowed('imogen-list', '2'))
+              // .act('role:foo,list:bar', null, allowed_imogen_list)
+              .act('role:foo,list:bar', allowed_imogen_list)
               .act(
                 'role:foo,load:bar',
                 { id: tmp.d0.id },
@@ -775,10 +788,13 @@ describe('owner', function () {
           }
 
           function validate_evan_guest_org0(done) {
+            // console.log('validate_evan_guest_org0')
+            
             // guests in org0 can access nothing
             evan_guest_org0
               .gate()
-              .act('role:foo,list:bar', null, allowed('evan-list', ''))
+            // .act('role:foo,list:bar', null, allowed('evan-list', ''))
+            .act('role:foo,list:bar', allowed('evan-list', ''))
               .act(
                 'role:foo,load:bar',
                 { id: tmp.d0.id },
@@ -803,10 +819,13 @@ describe('owner', function () {
           }
 
           function validate_derek_staff_org1(done) {
+            // console.log('validate_derek_staff_org1')
+            
             // staff of org1 can access all of org1, nothing in org0
             derek_staff_org1
               .gate()
-              .act('role:foo,list:bar', null, allowed('derek-list', '3'))
+            // .act('role:foo,list:bar', null, allowed('derek-list', '3'))
+            .act('role:foo,list:bar', allowed('derek-list', '3'))
               .act(
                 'role:foo,load:bar',
                 { id: tmp.d0.id },
@@ -833,7 +852,8 @@ describe('owner', function () {
       })
   })
 
-  it('group-scenario', (fin) => {
+  
+  it('group-scenario', 5555, (fin) => {
     var spec = {
       fields: ['group'],
     }
@@ -911,6 +931,8 @@ describe('owner', function () {
       })
 
       .ready(function () {
+        // console.log('QQQ')
+        
         var cathy_admin_org0 = this.root.delegate(null, {
           custom: {
             'sys-owner': {
@@ -1040,6 +1062,8 @@ describe('owner', function () {
         })
 
         function validate() {
+          // console.log('AAA')
+          
           expect(tmp.d0).includes({
             d: 0,
             group: 'staff',
@@ -1090,11 +1114,14 @@ describe('owner', function () {
           )()
 
           function validate_cathy_admin_org0(done) {
+            // console.log('EEE')
+            
             return function () {
               // admin of org0 can access all of org0
               cathy_admin_org0
                 .gate()
-                .act('role:foo,list:bar', null, allowed('cathy-list', '012457'))
+              // .act('role:foo,list:bar', null, allowed('cathy-list', '012457'))
+                .act('role:foo,list:bar', allowed('cathy-list', '012457'))
                 .act(
                   'role:foo,load:bar',
                   { id: tmp.d0.id },
@@ -1152,7 +1179,8 @@ describe('owner', function () {
               // owner not active
               bob_root_org0
                 .gate()
-                .act('role:foo,list:bar', null, allowed('bob-list', '012457'))
+              // .act('role:foo,list:bar', null, allowed('bob-list', '012457'))
+                .act('role:foo,list:bar', allowed('bob-list', '012457'))
                 .act(
                   'role:foo,load:bar',
                   { id: tmp.d0.id },
@@ -1197,7 +1225,8 @@ describe('owner', function () {
               // alice does not have access to d4 as admin group
               alice_staff_org0
                 .gate()
-                .act('role:foo,list:bar', null, allowed('alice-list', '01257'))
+              // .act('role:foo,list:bar', null, allowed('alice-list', '01257'))
+              .act('role:foo,list:bar', allowed('alice-list', '01257'))
                 .act(
                   'role:foo,list:bar',
                   { q: { group: 'admin' } },
@@ -1261,7 +1290,8 @@ describe('owner', function () {
               // helper of org0 can access own data and helper data
               frank_helper_org0
                 .gate()
-                .act('role:foo,list:bar', null, allowed('frank-list-all', '15'))
+                .act('role:foo,list:bar', allowed('frank-list-all', '15'))
+                // .act('role:foo,list:bar', null, allowed('frank-list-all', '15'))
 
                 // specify group to see everything in group
                 .act(
@@ -1455,6 +1485,8 @@ describe('owner', function () {
           }
 
           function validate_imogen_helper_org0(done) {
+            // console.log('RRR')
+            
             return function () {
               // helper of org0 can access own data and helper data
               imogen_helper_org0
