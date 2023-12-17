@@ -17,7 +17,7 @@ const Plugin = require('..')
 function make_bar_instance(fin, spec, explain) {
   spec = spec || {}
   return (
-    Seneca({ legacy: { transport: false } })
+    Seneca({ legacy: false })
       // turn off quiet to see errors
       .test('quiet', fin)
       //.test(fin)
@@ -1581,7 +1581,7 @@ describe('owner', function () {
   })
 
   it('intern', (fin) => {
-    Seneca({ legacy: { transport: false } })
+    Seneca({ legacy: false })
       .test(fin)
       .use(Plugin)
       .ready(function () {

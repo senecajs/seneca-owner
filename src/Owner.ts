@@ -2,52 +2,56 @@
 /* $lab:coverage:off$ */
 'use strict'
 
-import Joi from '@hapi/joi'
 
+import { Gubu } from 'gubu'
 
 import { refine_query } from './refine_query'
 
 /* $lab:coverage:on$ */
 
+const { Open, Any } = Gubu
+
+
 const defaults = {
-  default_spec: Joi.object().default({
+  default_spec: {
     active: true,
     fields: [],
-    read: {
+    read: Open({
       // default true
       //usr: true,
       //org: true
-    },
-    write: {
+    }),
+    write: Open({
       // default true
       //usr: true,
       //org: true
-    },
-    inject: {
+    }),
+    inject: Open({
       // default true
       //usr: true,
       //org: true
-    },
-    alter: {
+    }),
+    alter: Open({
       // default false
       //usr: false,
       //org: false
-    },
-    public: {
-      read: {
+    }),
+    public: Open({
+      read: Open({
         // field -> public boolean field
-      }
-    }
-  }),
+      })
+    })
+  },
 
-  specprop: Joi.string().default('sys-owner-spec'),
-  ownerprop: Joi.string().default('sys-owner'),
-  caseprop: Joi.string().default('case$'),
-  entprop: Joi.string().default('ent'),
-  queryprop: Joi.string().default('q'),
-  annotate: Joi.array().default([]),
-  fields: Joi.array().default([]),
-  owner_required: Joi.boolean().default(true)
+  specprop: 'sys-owner-spec',
+  ownerprop: 'sys-owner',
+  caseprop: 'case$',
+  entprop: 'ent',
+  queryprop: 'q',
+  annotate: [],
+  fields: [],
+  owner_required: true,
+  explain: Any(),
 }
 
 
@@ -61,6 +65,7 @@ function Owner(this: any, options: any) {
     ...new Set(options.default_spec.fields.concat(options.fields))
   ]
   intern.default_spec = intern.make_spec(options.default_spec)
+
 
   const casemap: any = {}
 

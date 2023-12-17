@@ -1,51 +1,50 @@
 /* Copyright (c) 2018-2020 Voxgig and other contributors, MIT License */
 /* $lab:coverage:off$ */
 'use strict';
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const joi_1 = __importDefault(require("@hapi/joi"));
+const gubu_1 = require("gubu");
 const refine_query_1 = require("./refine_query");
 /* $lab:coverage:on$ */
+const { Open, Any } = gubu_1.Gubu;
 const defaults = {
-    default_spec: joi_1.default.object().default({
+    default_spec: {
         active: true,
         fields: [],
-        read: {
+        read: Open({
         // default true
         //usr: true,
         //org: true
-        },
-        write: {
+        }),
+        write: Open({
         // default true
         //usr: true,
         //org: true
-        },
-        inject: {
+        }),
+        inject: Open({
         // default true
         //usr: true,
         //org: true
-        },
-        alter: {
+        }),
+        alter: Open({
         // default false
         //usr: false,
         //org: false
-        },
-        public: {
-            read: {
+        }),
+        public: Open({
+            read: Open({
             // field -> public boolean field
-            }
-        }
-    }),
-    specprop: joi_1.default.string().default('sys-owner-spec'),
-    ownerprop: joi_1.default.string().default('sys-owner'),
-    caseprop: joi_1.default.string().default('case$'),
-    entprop: joi_1.default.string().default('ent'),
-    queryprop: joi_1.default.string().default('q'),
-    annotate: joi_1.default.array().default([]),
-    fields: joi_1.default.array().default([]),
-    owner_required: joi_1.default.boolean().default(true)
+            })
+        })
+    },
+    specprop: 'sys-owner-spec',
+    ownerprop: 'sys-owner',
+    caseprop: 'case$',
+    entprop: 'ent',
+    queryprop: 'q',
+    annotate: [],
+    fields: [],
+    owner_required: true,
+    explain: Any(),
 };
 function Owner(options) {
     const seneca = this;
