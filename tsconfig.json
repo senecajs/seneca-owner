@@ -1,15 +1,15 @@
 {
   "compilerOptions": {
-    "target": "ES2019",
-    "module": "commonjs",
+    "esModuleInterop": true,
     "sourceMap": true,
+    "isolatedModules": true,
+    "module": "commonjs",
     "noEmitOnError": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictPropertyInitialization": true,
-    "esModuleInterop": true
+    "outDir": "dist",
+    "resolveJsonModule": true,
+    "rootDir": "src",
+    "strict": true,
+    "target": "ES2019"
   },
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["test", "dist", "node_modules"]
 }

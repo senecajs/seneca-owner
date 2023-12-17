@@ -12,7 +12,7 @@ const it = lab.it
 
 const Seneca = require('seneca')
 
-const refine_query = require('../lib/refine_query').refine_query
+const refine_query = require('../dist/refine_query').refine_query
 
 const s0 = Seneca({ legacy: false }).test().use('promisify')
 const qp0 = 'q'

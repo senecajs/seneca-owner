@@ -2,7 +2,9 @@
   "name": "@seneca/owner",
   "version": "5.2.0",
   "description": "Seneca plugin to add user ownership annotations to entities.",
-  "main": "owner.js",
+  "main": "dist/owner.js",
+  "type": "commonjs",
+  "types": "dist/owner.d.ts",
   "scripts": {
     "watch": "tsc -w -d",
     "build": "tsc -d",
