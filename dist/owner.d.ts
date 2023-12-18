@@ -16,6 +16,7 @@ declare namespace Owner {
         prior: (self: any, msg: any, reply: any, explain: any, expdata: any) => any;
         reply: (self: any, reply: any, result: any, explain: any, expdata: any) => any;
         fail: (self: any, reply: any, fail: any, explain: any, expdata: any) => any;
+        resolveFieldNames: (fieldName: string) => string[];
     };
 }
 export default Owner;
