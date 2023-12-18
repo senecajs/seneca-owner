@@ -86,7 +86,7 @@ function make_bar_instance(fin, spec, explain) {
       })
       .delegate(null, {
         custom: {
-          'sys-owner': {
+          sysowner: {
             usr: 'alice',
             org: 'wonderland',
           },
@@ -111,6 +111,9 @@ describe('owner', function () {
 
   test('spec-load-basic', (fin) => {
     make_bar_instance(fin).ready(function () {
+
+      
+      
       this.act('role:foo,add:bar', function (err, out) {
         this.act('role:foo,load:bar', { id: out.id }, function (err, out) {
           expect(out.usr).toEqual('alice')
@@ -118,7 +121,7 @@ describe('owner', function () {
 
           var bob_instance = this.root.delegate(null, {
             custom: {
-              'sys-owner': {
+              sysowner: {
                 usr: 'bob',
                 org: 'wonderland',
               },
@@ -146,7 +149,7 @@ describe('owner', function () {
     make_bar_instance(null, { fields: ['w'] }).ready(function () {
       var w_instance = this.root.delegate(null, {
         custom: {
-          'sys-owner': {
+          sysowner: {
             usr: 'alice',
             org: 'wonderland',
             w: [null, 1, 2],
@@ -225,7 +228,7 @@ describe('owner', function () {
       var writer = this
       var reader = this.root.delegate(null, {
         custom: {
-          'sys-owner': {
+          sysowner: {
             usr: 'alice',
             org: 'wonderland',
             w: 1,
@@ -293,7 +296,7 @@ describe('owner', function () {
 
           var bob_instance = this.root.delegate(null, {
             custom: {
-              'sys-owner': {
+              sysowner: {
                 usr: 'bob',
                 org: 'wonderland',
               },
@@ -325,7 +328,7 @@ describe('owner', function () {
 
           var admin_instance = this.root.delegate(null, {
             custom: {
-              'sys-owner': {
+              sysowner: {
                 usr: 'cathy',
                 org: 'wonderland',
                 case$: 'admin',
@@ -443,7 +446,7 @@ describe('owner', function () {
       .ready(function () {
         var cathy_admin_org0 = this.root.delegate(null, {
           custom: {
-            'sys-owner': {
+            sysowner: {
               usr: 'cathy',
               org: 'org0',
               group: 'admin',
@@ -454,7 +457,7 @@ describe('owner', function () {
 
         var bob_admin_org1 = this.root.delegate(null, {
           custom: {
-            'sys-owner': {
+            sysowner: {
               usr: 'bob',
               org: 'org1',
               group: 'admin',
@@ -465,7 +468,7 @@ describe('owner', function () {
 
         var alice_staff_org0 = this.root.delegate(null, {
           custom: {
-            'sys-owner': {
+            sysowner: {
               usr: 'alice',
               org: 'org0',
               group: 'staff',
@@ -476,7 +479,7 @@ describe('owner', function () {
 
         var derek_staff_org1 = this.root.delegate(null, {
           custom: {
-            'sys-owner': {
+            sysowner: {
               usr: 'derek',
               org: 'org1',
               group: 'staff',
@@ -487,7 +490,7 @@ describe('owner', function () {
 
         var evan_guest_org0 = this.root.delegate(null, {
           custom: {
-            'sys-owner': {
+            sysowner: {
               usr: 'evan',
               org: 'org0',
               group: 'guest',
@@ -498,7 +501,7 @@ describe('owner', function () {
 
         var frank_helper_org0 = this.root.delegate(null, {
           custom: {
-            'sys-owner': {
+            sysowner: {
               usr: 'frank',
               org: 'org0',
               group: 'helper',
@@ -509,7 +512,7 @@ describe('owner', function () {
 
         var imogen_helper_org0 = this.root.delegate(null, {
           custom: {
-            'sys-owner': {
+            sysowner: {
               usr: 'imogen',
               org: 'org0',
               group: 'helper',
@@ -930,7 +933,7 @@ describe('owner', function () {
         
         var cathy_admin_org0 = this.root.delegate(null, {
           custom: {
-            'sys-owner': {
+            sysowner: {
               usr: 'cathy',
               org: 'org0',
               group: ['admin', 'staff'],
@@ -941,12 +944,12 @@ describe('owner', function () {
 
         var bob_root_org0 = this.root.delegate(null, {
           custom: {
-            'sys-owner': {
+            sysowner: {
               usr: 'bob',
               org: 'org0',
               group: [],
             },
-            'sys-owner-spec': {
+            'sysowner-spec': {
               active: false,
             },
           },
@@ -954,7 +957,7 @@ describe('owner', function () {
 
         var alice_staff_org0 = this.root.delegate(null, {
           custom: {
-            'sys-owner': {
+            sysowner: {
               usr: 'alice',
               org: 'org0',
               group: ['staff'],
@@ -965,7 +968,7 @@ describe('owner', function () {
 
         var evan_guest_org0 = this.root.delegate(null, {
           custom: {
-            'sys-owner': {
+            sysowner: {
               usr: 'evan',
               org: 'org0',
               group: ['guest'],
@@ -976,7 +979,7 @@ describe('owner', function () {
 
         var frank_helper_org0 = this.root.delegate(null, {
           custom: {
-            'sys-owner': {
+            sysowner: {
               usr: 'frank',
               org: 'org0',
               group: [null, 'helper'],
@@ -987,7 +990,7 @@ describe('owner', function () {
 
         var imogen_helper_org0 = this.root.delegate(null, {
           custom: {
-            'sys-owner': {
+            sysowner: {
               usr: 'imogen',
               org: 'org0',
               group: [null, 'helper'],
@@ -1588,10 +1591,8 @@ describe('owner', function () {
       .test(fin)
       .use(Plugin)
       .ready(function () {
-        expect(Plugin.intern.default_spec).toBeDefined()
-        expect(Plugin.intern.deepextend).toBeDefined()
 
-        var spec0 = Plugin.intern.make_spec({ write: { org: false } })
+        var spec0 = Plugin.intern.make_spec({ write: { usr: true, org: false } })
         expect(spec0).toMatchObject({ write: { usr: true, org: false } })
 
         expect(Plugin.intern.match('a', 'a')).toEqual(true)

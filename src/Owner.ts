@@ -44,7 +44,7 @@ const defaults = {
   },
 
   specprop: 'sys-owner-spec',
-  ownerprop: 'sys-owner',
+  ownerprop: 'sysowner',
   caseprop: 'case$',
   entprop: 'ent',
   queryprop: 'q',
@@ -52,6 +52,10 @@ const defaults = {
   fields: [],
   owner_required: true,
   explain: Any(),
+
+  include: {
+    custom: Open({})
+  }
 }
 
 
@@ -59,12 +63,16 @@ const defaults = {
 function Owner(this: any, options: any) {
   const seneca = this
 
+  const { deep } = seneca.util
+
   intern.deepextend = seneca.util.deepextend
 
   options.default_spec.fields = [
     ...new Set(options.default_spec.fields.concat(options.fields))
   ]
-  intern.default_spec = intern.make_spec(options.default_spec)
+  // intern.default_spec = intern.make_spec(options.default_spec)
+  const default_spec = intern.make_spec(options.default_spec, {})
+
 
 
   const casemap: any = {}
@@ -89,6 +97,12 @@ function Owner(this: any, options: any) {
   const entprop = options.entprop
   const queryprop = options.queryprop
 
+  const include = options.include
+  const hasInclude = 0 < Object.keys(include).length
+
+  // By default, ownerprop needed to activate
+  include.custom = deep({ [ownerprop]: { owner$: 'exists' } }, include.custom)
+
   const annotate = options.annotate.map((p: any) => seneca.util.Jsonic(p))
 
   annotate.forEach(function(msgpat: any) {
@@ -104,7 +118,7 @@ function Owner(this: any, options: any) {
         options: options
       }
 
-      var spec = self.util.deepextend(meta.custom[specP] || intern.default_spec)
+      var spec = self.util.deepextend(meta.custom[specP] || default_spec)
       var owner = meta.custom[ownerprop]
 
       if (!owner && !options.owner_required) {
@@ -125,7 +139,24 @@ function Owner(this: any, options: any) {
       explain &&
         ((expdata.owner = owner), (expdata.spec = self.util.deepextend(spec)))
 
-      if (spec.active) {
+      let active = spec.active
+
+      if (active && hasInclude) {
+        if (include.custom) {
+          let cip
+          for (cip in include.custom) {
+            active = active && (include.custom[cip] === meta.custom[cip] ||
+              ('exists' === include.custom[cip].owner$ && null != meta.custom[cip]))
+            if (!active) { break }
+          }
+          explain && ((expdata.include_custom = active),
+            (!active && (expdata.include_custom_prop = cip)))
+        }
+      }
+
+      // console.log('QQQ', active, hasInclude, include.custom, meta.custom, msg)
+
+      if (active) {
         if ('list' === msg.cmd) {
           explain && (expdata.path = 'list')
 
@@ -250,6 +281,8 @@ function Owner(this: any, options: any) {
 
           var ent = msg[entprop]
 
+          // console.log('OWNER save A', ent, spec)
+
           // only set fields props if not already set
           for (var i = 0; i < spec.fields.length; i++) {
             var f = spec.fields[i]
@@ -338,15 +371,20 @@ function Owner(this: any, options: any) {
 
     owner.desc = 'Validate owner for ' + seneca.util.pattern(msgpat)
 
+    // seneca.add(msgpat, owner)
+    seneca.wrap(msgpat, owner)
+
+    //if (!seneca.find(msgpat, { exact: true })) {
     seneca.add(msgpat, owner)
+    // }
   })
 
   return {
     exports: {
-      make_spec: intern.make_spec,
+      make_spec: (inspec: any) => intern.make_spec(inspec, default_spec),
       casemap: casemap,
       config: {
-        spec: intern.default_spec,
+        spec: default_spec,
         options: options
       }
     }
@@ -354,11 +392,11 @@ function Owner(this: any, options: any) {
 }
 
 const intern = (Owner.intern = {
-  default_spec: null,
+  // default_spec: null,
   deepextend: (a: any, b: any, c: any) => null,
 
-  make_spec: function(inspec: any) {
-    const spec: any = intern.deepextend({}, intern.default_spec, inspec)
+  make_spec: function(inspec: any, default_spec: any) {
+    const spec: any = intern.deepextend({}, default_spec, inspec)
     spec.fields = [...new Set(spec.fields)]
       ;['write', 'read', 'inject', 'alter'].forEach(m => {
         spec[m] = spec[m] || {}
