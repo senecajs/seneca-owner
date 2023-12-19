@@ -108,7 +108,7 @@ function Owner(this: any, options: any) {
 
   const ignoreMatch = seneca.util.Patrun()
   const ignore = options.ignore.map((p: any) => seneca.util.Jsonic(p))
-  ignore.map((pat: any) => ignoreMatch.add(pat, JSON.stringify(pat).replace(/"/g, '')))
+  ignore.map((pat: any) => ignoreMatch.add(pat, pat))
 
   const annotate = options.annotate.map((p: any) => seneca.util.Jsonic(p))
 
@@ -125,9 +125,9 @@ function Owner(this: any, options: any) {
         options: options
       }
 
-      let ignorePat
-      if (ignorePat = ignoreMatch.find(msg)) {
-        explain && (expdata.ignored = true, expdata.ignorePat = ignorePat)
+      let ignorepat = ignoreMatch.find(msg)
+      if (null != ignorepat) {
+        explain && (expdata.ignored = true, expdata.ignorepat = ignorepat)
         return intern.prior(self, msg, reply, explain, expdata)
       }
 

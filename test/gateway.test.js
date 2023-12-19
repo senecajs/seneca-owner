@@ -116,16 +116,55 @@ describe('gateway', () => {
 
   test('ignore', async () => {
     const s0 = await makeSeneca()
+
+    s0
+      .message('a:1', async function(msg, meta) {
+        // console.log(meta)
+        // let exp = this.explain()
+        // exp && exp({a:1})
+        return await this.entity('qaz').save$({y:msg.y})
+      })
+      .message('b:1', async function(msg, meta) {
+        // console.log(meta)
+        // let exp = this.explain()
+        // exp && exp({b:1})
+        return await this.post({a:1,y:msg.y})
+      })
     
     const su0 = s0.delegate(null,{
       custom: { principal: { user: { id:'u0'} } }
     })
     // console.log(su0)
 
+    let f0u0 = await su0.entity('foo').save$({x:2})
+    // console.log(f0u0)
+    expect(f0u0).toMatchObject({x:2,owner_id:'u0'})
+
+
     let q0u0 = await su0.entity('qaz').save$({y:1})
     // console.log(q0u0)
     expect(q0u0).toMatchObject({y:1})
     expect(q0u0.owner_id).toBeUndefined()
+
+    // TODO: fix explain
+    let exp = []
+    let q1u0 = await su0.entity('qaz').save$({y:1,directive$:{explain$:exp}})
+    // console.log(q1u0)
+    // console.log('EXPLAIN', exp)
+    expect(q1u0).toMatchObject({y:1})
+    expect(q1u0.owner_id).toBeUndefined()
+    
+    exp = []
+    let q2u0 = await s0.post({b:1,y:11,explain$:exp})
+    // console.log(q2u0)
+    // console.log('EXPLAIN', q2u0, exp)
+    expect(q2u0).toMatchObject({y:11})
+    expect(q2u0.owner_id).toBeUndefined()
+    expect(exp[3]).toMatchObject({
+      msgpat: { sys: 'entity' },
+      ignored: true,
+      ignorepat: { sys: 'entity', name: 'qaz' },
+    })
     
   })
 })

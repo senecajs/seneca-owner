@@ -82,7 +82,7 @@ function Owner(options) {
     include.custom = deep({ [ownerprop]: { owner$: 'exists' } }, include.custom);
     const ignoreMatch = seneca.util.Patrun();
     const ignore = options.ignore.map((p) => seneca.util.Jsonic(p));
-    ignore.map((pat) => ignoreMatch.add(pat, JSON.stringify(pat).replace(/"/g, '')));
+    ignore.map((pat) => ignoreMatch.add(pat, pat));
     const annotate = options.annotate.map((p) => seneca.util.Jsonic(p));
     annotate.forEach(function (msgpat) {
         const checkOwner = function checkOwner(msg, reply, meta) {
@@ -95,9 +95,9 @@ function Owner(options) {
                 modifiers: {},
                 options: options
             };
-            let ignorePat;
-            if (ignorePat = ignoreMatch.find(msg)) {
-                explain && (expdata.ignored = true, expdata.ignorePat = ignorePat);
+            let ignorepat = ignoreMatch.find(msg);
+            if (null != ignorepat) {
+                explain && (expdata.ignored = true, expdata.ignorepat = ignorepat);
                 return intern.prior(self, msg, reply, explain, expdata);
             }
             let spec = self.util.deepextend(meta.custom[specP] || default_spec);
