@@ -17,6 +17,9 @@ function makeSeneca() {
       fields: ['id:owner_id'],
       annotate: [
         'sys:entity',
+      ],
+      ignore: [
+        'sys:entity,name:qaz'
       ]
     })
     .ready()
@@ -108,7 +111,21 @@ describe('gateway', () => {
       {x:3,owner_id:'u1'},
       {x:4,owner_id:'u1'}
     ])
+  })
 
+
+  test('ignore', async () => {
+    const s0 = await makeSeneca()
+    
+    const su0 = s0.delegate(null,{
+      custom: { principal: { user: { id:'u0'} } }
+    })
+    // console.log(su0)
+
+    let q0u0 = await su0.entity('qaz').save$({y:1})
+    // console.log(q0u0)
+    expect(q0u0).toMatchObject({y:1})
+    expect(q0u0.owner_id).toBeUndefined()
     
   })
 })

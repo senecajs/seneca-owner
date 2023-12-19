@@ -49,6 +49,7 @@ const defaults = {
   entprop: 'ent',
   queryprop: 'q',
   annotate: [],
+  ignore: [],
   fields: [],
   owner_required: true,
   explain: Any(),
@@ -105,6 +106,10 @@ function Owner(this: any, options: any) {
   // By default, ownerprop needed to activate
   include.custom = deep({ [ownerprop]: { owner$: 'exists' } }, include.custom)
 
+  const ignoreMatch = seneca.util.Patrun()
+  const ignore = options.ignore.map((p: any) => seneca.util.Jsonic(p))
+  ignore.map((pat: any) => ignoreMatch.add(pat, JSON.stringify(pat).replace(/"/g, '')))
+
   const annotate = options.annotate.map((p: any) => seneca.util.Jsonic(p))
 
   annotate.forEach(function(msgpat: any) {
@@ -118,6 +123,12 @@ function Owner(this: any, options: any) {
         msgid: meta.id,
         modifiers: {},
         options: options
+      }
+
+      let ignorePat
+      if (ignorePat = ignoreMatch.find(msg)) {
+        explain && (expdata.ignored = true, expdata.ignorePat = ignorePat)
+        return intern.prior(self, msg, reply, explain, expdata)
       }
 
       let spec = self.util.deepextend(meta.custom[specP] || default_spec)
