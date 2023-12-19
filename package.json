@@ -1,6 +1,6 @@
 {
   "name": "@seneca/owner",
-  "version": "6.0.0",
+  "version": "6.0.1",
   "description": "Seneca plugin to add user ownership annotations to entities.",
   "main": "dist/Owner.js",
   "type": "commonjs",
@@ -32,8 +32,8 @@
   "files": [
     "LICENSE",
     "README.md",
-    "owner.*",
-    "lib"
+    "src",
+    "dist"
   ],
   "devDependencies": {
     "@types/jest": "^29.5.11",
