@@ -3,12 +3,11 @@
 
 # @seneca/owner
 
-[![Npm][BadgeNpm]][Npm]
-[![Travis][BadgeTravis]][Travis]
-[![Coveralls][BadgeCoveralls]][Coveralls]
-[![Maintainability](https://api.codeclimate.com/v1/badges/4db939a7299d629c974b/maintainability)](https://codeclimate.com/github/voxgig/seneca-owner/maintainability)
-[![DeepScan grade](https://deepscan.io/api/teams/5016/projects/12956/branches/208825/badge/grade.svg)](https://deepscan.io/dashboard#view=project&tid=5016&pid=12956&bid=208825)
-[![dependencies Status](https://david-dm.org/voxgig/seneca-owner/status.svg)](https://david-dm.org/voxgig/seneca-owner)
+
+
+[![npm version](https://img.shields.io/npm/v/@seneca/owner.svg)](https://npmjs.com/package/@seneca/owner)
+[![build](https://github.com/senecajs/seneca-owner/actions/workflows/build.yml/badge.svg)](https://github.com/senecajs/seneca-owner/actions/workflows/build.yml)
+[![Known Vulnerabilities](https://snyk.io/test/github/senecajs/seneca-owner/badge.svg)](https://snyk.io/test/github/senecajs/seneca-owner)
 
 | ![Voxgig](https://www.voxgig.com/res/img/vgt01r.png) | This open source module is sponsored and supported by [Voxgig](https://www.voxgig.com). |
 |---|---|
