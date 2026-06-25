@@ -110,9 +110,47 @@ No description provided.
 
 <!--END:action-desc-->
 
+### Usage
+
+For an example showing groups with custom permissions, see the
+`group-scenario` unit test.
+
+
+
+<!--START:options-->
+<!--END:options-->
+
+<!--START:action-list-->
+
+### Debugging
+
+Ownership rules can become complex. To debug individual use-cases, in production or otherwise, use the `Seneca.explain` feature.
+
+```
+var explain_log = []
+await seneca.post('cmd:do-stuff', {explain$: explain_log})
+console.log(explain_log) // A record of message calls and custom debug information.
+```
+
+The _explain_ functionality is also supported by [seneca-browser](github.com/voxgig/seneca-browser), so you can use it directly in the browser console. You may find it more useful to use the general capture: 
+
+```
+var explain_log = seneca.explain(true)
+... user interface actions that generate requests
+console.log(explain_log)
+```
+
+
+[BadgeCoveralls]: https://coveralls.io/repos/voxgig/seneca-owner/badge.svg?branch=master&service=github
+[BadgeNpm]: https://badge.fury.io/js/seneca-owner.svg
+[BadgeTravis]: https://travis-ci.org/voxgig/seneca-owner.svg?branch=master
+[Coveralls]: https://coveralls.io/github/voxgig/seneca-owner?branch=master
+[Npm]: https://www.npmjs.com/package/seneca-owner
+[Travis]: https://travis-ci.org/voxgig/seneca-owner?branch=master
+
 ## Contributing
 
-The [Senecajs org][] encourages open participation. If you feel you can help in any way, be it with documentation, examples, extra testing, or new features please get in touch.
+The [Senecajs org][] encourages open participation.
 
 ### Running tests
 
