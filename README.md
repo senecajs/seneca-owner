@@ -170,12 +170,6 @@ npm run test
 Works with [seneca-entity](https://github.com/senecajs/seneca-entity) to enforce data ownership.
 
 [Seneca](http://senecajs.org) plugin providing ownership permissions for entities.
-[![Npm][BadgeNpm]][Npm]
-[![Travis][BadgeTravis]][Travis]
-[![Coveralls][BadgeCoveralls]][Coveralls]
-[![Maintainability](https://api.codeclimate.com/v1/badges/4db939a7299d629c974b/maintainability)](https://codeclimate.com/github/voxgig/seneca-owner/maintainability)
-[![DeepScan grade](https://deepscan.io/api/teams/5016/projects/12956/branches/208825/badge/grade.svg)](https://deepscan.io/dashboard#view=project&tid=5016&pid=12956&bid=208825)
-[![dependencies Status](https://david-dm.org/voxgig/seneca-owner/status.svg)](https://david-dm.org/voxgig/seneca-owner)
 [BadgeCoveralls]: https://coveralls.io/repos/voxgig/seneca-owner/badge.svg?branch=master&service=github
 [BadgeNpm]: https://badge.fury.io/js/seneca-owner.svg
 [BadgeTravis]: https://travis-ci.org/voxgig/seneca-owner.svg?branch=master
