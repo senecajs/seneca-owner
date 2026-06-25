@@ -9,13 +9,7 @@
 [![Npm][BadgeNpm]][Npm]
 [![Travis][BadgeTravis]][Travis]
 [![Coveralls][BadgeCoveralls]][Coveralls]
-[![Maintainability](https://api.codeclimate.com/v1/badges/4db939a7299d629c974b/maintainability)](https://codeclimate.com/github/voxgig/seneca-owner/maintainability)
 [![DeepScan grade](https://deepscan.io/api/teams/5016/projects/12956/branches/208825/badge/grade.svg)](https://deepscan.io/dashboard#view=project&tid=5016&pid=12956&bid=208825)
-](https://david-dm.org/voxgig/seneca-owner)
-
-
-
-
 
 | ![Voxgig](https://www.voxgig.com/res/img/vgt01r.png) | This open source module is sponsored and supported by [Voxgig](https://www.voxgig.com). |
 |---|---|
@@ -106,7 +100,6 @@ If you're using this module and need help, you can:
 
 * [hook:case,sys:owner](#-hookcasesysowner-)
 
-
 <!--END:action-list-->
 
 <!--START:action-desc-->
@@ -117,10 +110,7 @@ If you're using this module and need help, you can:
 
 No description provided.
 
-
-
 ----------
-
 
 <!--END:action-desc-->
 
@@ -128,8 +118,6 @@ No description provided.
 
 For an example showing groups with custom permissions, see the
 `group-scenario` unit test.
-
-
 
 <!--START:options-->
 <!--END:options-->
@@ -154,13 +142,10 @@ var explain_log = seneca.explain(true)
 console.log(explain_log)
 ```
 
-
 [BadgeCoveralls]: https://coveralls.io/repos/voxgig/seneca-owner/badge.svg?branch=master&service=github
 [BadgeNpm]: https://badge.fury.io/js/seneca-owner.svg
-[BadgeTravis]: https://travis-ci.org/voxgig/seneca-owner.svg?branch=master
 [Coveralls]: https://coveralls.io/github/voxgig/seneca-owner?branch=master
 [Npm]: https://www.npmjs.com/package/seneca-owner
-[Travis]: https://travis-ci.org/voxgig/seneca-owner?branch=master
 
 ## Contributing
 
@@ -179,7 +164,5 @@ Works with [seneca-entity](https://github.com/senecajs/seneca-entity) to enforce
 [Seneca](http://senecajs.org) plugin providing ownership permissions for entities.
 [BadgeCoveralls]: https://coveralls.io/repos/voxgig/seneca-owner/badge.svg?branch=master&service=github
 [BadgeNpm]: https://badge.fury.io/js/seneca-owner.svg
-[BadgeTravis]: https://travis-ci.org/voxgig/seneca-owner.svg?branch=master
 [Coveralls]: https://coveralls.io/github/voxgig/seneca-owner?branch=master
 [Npm]: https://www.npmjs.com/package/seneca-owner
-[Travis]: https://travis-ci.org/voxgig/seneca-owner?branch=master
