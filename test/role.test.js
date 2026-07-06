@@ -141,14 +141,14 @@ describe('role', () => {
     const member = s0.delegate(null, {
       custom: { sysowner: { owner_id: 'u0', role: 'member' } }
     })
-    const admin = s0.delegate(null, {
-      custom: { sysowner: { owner_id: 'a0', role: 'admin' } }
+    const orgowner = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'o0', role: 'orgowner' } }
     })
 
     const foo = await member.entity('sys/foo').save$({ x: 1 })
     expect(foo).toMatchObject({ x: 1, owner_id: 'u0' })
 
-    const seen = await admin.entity('sys/foo').load$(foo.id)
+    const seen = await orgowner.entity('sys/foo').load$(foo.id)
     expect(seen).toMatchObject({ id: foo.id, owner_id: 'u0' })
   })
 

@@ -12,10 +12,21 @@ import { refine_query } from './refine_query'
 const { Open, Any } = Gubu
 
 
-// Preset used when `roles: true`.
+// Preset used when `roles: true`. Declared junior -> senior.
 const DEFAULT_ROLES = {
   member: { scope: 'own', entities: '*' },
-  admin: { scope: 'all', entities: '*' }
+  orgowner: { scope: 'all', entities: '*' }
+}
+
+
+// Merge two entity-grant maps, keeping the wider permission per entity.
+function mergeGrant(a: any, b: any) {
+  const out = Object.assign({}, a)
+  for (const k in b) {
+    const g = '' + (out[k] || '') + (b[k] || '')
+    out[k] = (g.includes('r') ? 'r' : '') + (g.includes('w') ? 'w' : '')
+  }
+  return out
 }
 
 
@@ -56,6 +67,7 @@ const defaults = {
   roleprop: 'role',
   defaultRole: Any('member'),
   roles: Any({}),
+  ownerfield: Any(),
   entprop: 'ent',
   queryprop: 'q',
   annotate: [],
@@ -112,6 +124,34 @@ function Owner(this: any, options: any) {
   const roles = true === options.roles ? DEFAULT_ROLES : (options.roles || {})
   const hasRoles = 0 < Object.keys(roles).length
 
+  // The per-user field a `scope:'all'` role stops enforcing (so it reads across
+  // owners); every other field (e.g. an org tenant field) stays enforced.
+  // Defaults to the first declared field.
+  const firstField = '' + ((options.fields || [])[0] || 'owner_id')
+  const ownerfield =
+    options.ownerfield || (firstField.split(':')[1] || firstField.split(':')[0])
+
+  // Role hierarchy: a senior role (declared later) inherits the entity grants
+  // of every role declared before it, so it can reach the roles below it.
+  const effectiveRoles: any = {}
+  if (hasRoles) {
+    let acc: any = {}
+    let accAll = false
+    Object.keys(roles).forEach((name: any) => {
+      const r = roles[name] || {}
+      if ('*' === r.entities) {
+        accAll = true
+      }
+      else if (r.entities) {
+        acc = mergeGrant(acc, r.entities)
+      }
+      effectiveRoles[name] = {
+        scope: r.scope || 'own',
+        entities: accAll ? '*' : Object.assign({}, acc)
+      }
+    })
+  }
+
   const include = options.include
   const hasInclude = 0 < Object.keys(include).length
 
@@ -165,8 +205,8 @@ function Owner(this: any, options: any) {
 
       if (hasRoles && owner) {
         const role = null != owner[roleP] ? owner[roleP] : defaultRole
-        const policy = roles[role] ||
-          (null != defaultRole ? roles[defaultRole] : null)
+        const policy = effectiveRoles[role] ||
+          (null != defaultRole ? effectiveRoles[defaultRole] : null)
 
         const canon = '' + ((msg.ent || msg.qent || {}).entity$ || '')
         const [, ebase, ename] = canon.split('/')
@@ -193,12 +233,16 @@ function Owner(this: any, options: any) {
           return intern.reply(self, reply, null, explain, expdata)
         }
 
-        // scope 'all' drops this instance's owner-field check; any other
-        // owner instance (e.g. an org axis) still applies.
+        // scope 'all' stops enforcing the owner field (reads across owners);
+        // other fields such as the org tenant field stay enforced.
         if (policy && 'all' === policy.scope) {
           spec.fields.forEach((f: any) => {
-            spec.read[f] = false
-            spec.write[f] = false
+            const parts = ('' + f).split(':')
+            const entField = null == parts[1] ? parts[0] : parts[1]
+            if (entField === ownerfield) {
+              spec.read[f] = false
+              spec.write[f] = false
+            }
           })
         }
       }
