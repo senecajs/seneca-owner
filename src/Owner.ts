@@ -65,8 +65,8 @@ const defaults = {
   ownerprop: 'sysowner',
   caseprop: 'case$',
   roleprop: 'role',
-  defaultRole: Any('member'),
-  roles: Any({}),
+  defaultRole: Any(),
+  roles: Any(),
   ownerfield: Any(),
   entprop: 'ent',
   queryprop: 'q',
@@ -120,7 +120,9 @@ function Owner(this: any, options: any) {
   const entprop = options.entprop
   const queryprop = options.queryprop
   const roleP = options.roleprop
-  const defaultRole = options.defaultRole
+  // Unset -> 'member' (most restrictive); explicit null -> deny unknown roles.
+  const defaultRole =
+    undefined === options.defaultRole ? 'member' : options.defaultRole
   const roles = true === options.roles ? DEFAULT_ROLES : (options.roles || {})
   const hasRoles = 0 < Object.keys(roles).length
 
