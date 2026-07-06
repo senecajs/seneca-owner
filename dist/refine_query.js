@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2018-2020 Voxgig and other contributors, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.refine_query = void 0;
+exports.refine_query = refine_query;
 function refine_query(seneca, msg, queryprop, spec, owner, intern, resolvedFieldNames) {
     let q = (msg[queryprop] = msg[queryprop] || {});
     // console.log('RQ', q)
@@ -59,5 +59,4 @@ function refine_query(seneca, msg, queryprop, spec, owner, intern, resolvedField
         }
     }
 }
-exports.refine_query = refine_query;
 //# sourceMappingURL=refine_query.js.map
