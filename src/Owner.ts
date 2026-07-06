@@ -12,6 +12,13 @@ import { refine_query } from './refine_query'
 const { Open, Any } = Gubu
 
 
+// Preset used when `roles: true`.
+const DEFAULT_ROLES = {
+  member: { scope: 'own', entities: '*' },
+  admin: { scope: 'all', entities: '*' }
+}
+
+
 const defaults = {
   default_spec: {
     active: true,
@@ -46,6 +53,9 @@ const defaults = {
   specprop: 'sys-owner-spec',
   ownerprop: 'sysowner',
   caseprop: 'case$',
+  roleprop: 'role',
+  defaultRole: Any('member'),
+  roles: Any({}),
   entprop: 'ent',
   queryprop: 'q',
   annotate: [],
@@ -97,6 +107,10 @@ function Owner(this: any, options: any) {
   const caseP = options.caseprop
   const entprop = options.entprop
   const queryprop = options.queryprop
+  const roleP = options.roleprop
+  const defaultRole = options.defaultRole
+  const roles = true === options.roles ? DEFAULT_ROLES : (options.roles || {})
+  const hasRoles = 0 < Object.keys(roles).length
 
   const include = options.include
   const hasInclude = 0 < Object.keys(include).length
@@ -147,6 +161,46 @@ function Owner(this: any, options: any) {
       if (modifiers.query) {
         explain && (expdata.modifiers.query = true)
         spec = modifiers.query.call(self, spec, owner, msg)
+      }
+
+      if (hasRoles && owner) {
+        const role = null != owner[roleP] ? owner[roleP] : defaultRole
+        const policy = roles[role] ||
+          (null != defaultRole ? roles[defaultRole] : null)
+
+        const canon = '' + ((msg.ent || msg.qent || {}).entity$ || '')
+        const [, ebase, ename] = canon.split('/')
+        const entity = ebase + '/' + ename
+
+        const grant = policy && '*' === policy.entities ? 'rw' :
+          (policy && policy.entities &&
+            (policy.entities[entity] || policy.entities[ename])) || ''
+
+        const need = 'load' === msg.cmd || 'list' === msg.cmd ? 'r' : 'w'
+
+        if (!('' + grant).includes(need)) {
+          explain && (expdata.role_denied = { role, entity, need })
+          if ('list' === msg.cmd) {
+            return intern.reply(self, reply, [], explain, expdata)
+          }
+          if ('remove' === msg.cmd) {
+            return intern.reply(self, reply, void 0, explain, expdata)
+          }
+          if ('save' === msg.cmd) {
+            const fail = { code: 'role-entity-not-allowed', details: { role, entity } }
+            return intern.fail(self, reply, fail, explain, expdata)
+          }
+          return intern.reply(self, reply, null, explain, expdata)
+        }
+
+        // scope 'all' drops this instance's owner-field check; any other
+        // owner instance (e.g. an org axis) still applies.
+        if (policy && 'all' === policy.scope) {
+          spec.fields.forEach((f: any) => {
+            spec.read[f] = false
+            spec.write[f] = false
+          })
+        }
       }
 
       explain &&
