@@ -7,10 +7,14 @@ const refine_query_1 = require("./refine_query");
 /* $lab:coverage:on$ */
 const { Open, Any } = gubu_1.Gubu;
 // Default role presets; caller roles merge over these (caller wins per role).
-// No entities => full read+write. org:true => whole org, else owner's own rows.
+// A role is a set of grants: entity-pattern -> allowed ops (+ optional spec
+// fragment). member: own rows on any entity. admin: whole tenant, any entity.
+// scope:'org' widens the user axis (first field) only; other fields, including
+// the tenant axis, always stay enforced so a role never leaves its tenant.
+const ALL_OPS = ['list$', 'load$', 'save$', 'remove$'];
 const default_roles = {
-    member: {},
-    admin: { org: true }
+    member: { grants: [{ entity: '*' }] },
+    admin: { scope: 'org', grants: [{ entity: '*' }] }
 };
 const defaults = {
     default_spec: {
@@ -79,30 +83,40 @@ function Owner(options) {
         out.admin = src.admin;
         return out;
     }
-    function normalizeEntities(ent) {
-        const out = {};
-        ent.forEach((item) => {
-            if ('string' === typeof item) {
-                out[item] = { read: true, write: true };
+    // A grant is a string entity pattern or { entity, ops?, spec? }. Normalize to
+    // { entity, ops:Set<cmd>, spec }. ops use seneca method names (list$ ...) so
+    // the config speaks the ORM's language; strip the $ to match msg.cmd.
+    function normalizeGrant(g) {
+        if ('string' === typeof g) {
+            g = { entity: g };
+        }
+        const ops = new Set((g.ops || ALL_OPS).map((o) => ('' + o).replace(/\$$/, '')));
+        return { entity: '' + g.entity, ops, spec: g.spec || {} };
+    }
+    // Deep-merge two grant lists into a superset keyed by entity: ops union,
+    // later (senior) spec fragment wins. Used for hierarchy inheritance.
+    function mergeGrantLists(base, add) {
+        const byEntity = {};
+        base.concat(add).forEach((g) => {
+            const prev = byEntity[g.entity];
+            if (!prev) {
+                byEntity[g.entity] =
+                    { entity: g.entity, ops: new Set(g.ops), spec: deep({}, g.spec) };
             }
             else {
-                for (const k in item) {
-                    out[k] = { read: !!item[k].read, write: !!item[k].write };
-                }
+                g.ops.forEach((o) => prev.ops.add(o));
+                prev.spec = deep(prev.spec, g.spec);
             }
         });
-        return out;
+        return Object.keys(byEntity).map((k) => byEntity[k]);
     }
-    function mergeGrant(a, b) {
-        const out = {};
-        for (const k in a) {
-            out[k] = { read: !!a[k].read, write: !!a[k].write };
+    // Entity pattern -> Patrun match key. '*' any, 'base/*' whole base, else exact.
+    function entityPat(entity) {
+        if ('*' === entity) {
+            return {};
         }
-        for (const k in b) {
-            const p = out[k] || { read: false, write: false };
-            out[k] = { read: p.read || b[k].read, write: p.write || b[k].write };
-        }
-        return out;
+        const [b, n] = entity.split('/');
+        return (null == n || '*' === n) ? { base: b } : { base: b, name: n };
     }
     const casemap = {};
     this.fix('sys:owner').add('hook:case', hook_case);
@@ -125,30 +139,49 @@ function Owner(options) {
     const defaultRole = undefined === options.defaultRole ? 'member' : options.defaultRole;
     // rolesys gates all role enforcement; false -> plain ownership only.
     const rolesys = true === options.rolesys;
-    const roles = rolesys ? buildRoles() : {};
-    // Field an org role stops enforcing; defaults to first declared field.
+    // The user axis is the first declared field; scope:'org' stops enforcing it.
+    // Everything after it (incl. the tenant axis) always stays enforced.
     const firstField = '' + ((options.fields || [])[0] || 'owner_id');
     const ownerfield = options.ownerfield || (firstField.split(':')[1] || firstField.split(':')[0]);
-    // Senior role inherits entity grants of every role declared before it.
-    const effectiveRoles = {};
-    if (rolesys) {
-        let acc = {};
-        let accAll = false;
-        Object.keys(roles).forEach((name) => {
-            const r = roles[name] || {};
-            const ent = null == r.entities ? true : r.entities;
-            if (true === ent) {
-                accAll = true;
-            }
-            else {
-                acc = mergeGrant(acc, normalizeEntities(ent));
-            }
-            effectiveRoles[name] = {
-                org: !!r.org,
-                entities: accAll ? true : Object.assign({}, acc)
-            };
-        });
+    // Fold scope:'org' into a spec fragment: disable the user-axis field so the
+    // role reads/writes across users, while the tenant axis stays enforced.
+    function buildGrantSpec(grantSpec, scopeOrg) {
+        const spec = deep({}, grantSpec);
+        if (scopeOrg) {
+            spec.read = spec.read || {};
+            spec.write = spec.write || {};
+            (options.fields || []).forEach((f) => {
+                const parts = ('' + f).split(':');
+                const entField = null == parts[1] ? parts[0] : parts[1];
+                if (entField === ownerfield) {
+                    spec.read[f] = false;
+                    spec.write[f] = false;
+                }
+            });
+        }
+        return spec;
     }
+    // Compile each role to a Patrun of entity-pattern -> { ops, spec }. Roles run
+    // junior -> senior; a senior deep-merges every junior grant (superset), then
+    // its own, so a senior can never have less access than a junior below it.
+    function compileRoles() {
+        const src = buildRoles();
+        const compiled = {};
+        let inherited = [];
+        Object.keys(src).forEach((name) => {
+            const role = src[name] || {};
+            const scopeOrg = 'org' === role.scope;
+            const own = (role.grants || []).map(normalizeGrant);
+            inherited = mergeGrantLists(inherited, own);
+            const pm = seneca.util.Patrun();
+            inherited.forEach((g) => {
+                pm.add(entityPat(g.entity), { ops: g.ops, spec: buildGrantSpec(g.spec, scopeOrg) });
+            });
+            compiled[name] = pm;
+        });
+        return compiled;
+    }
+    const compiledRoles = rolesys ? compileRoles() : {};
     const include = options.include;
     const hasInclude = 0 < Object.keys(include).length;
     const resolvedFieldNames = {};
@@ -190,42 +223,21 @@ function Owner(options) {
             }
             if (rolesys && owner) {
                 const role = null != owner[roleP] ? owner[roleP] : defaultRole;
-                const policy = effectiveRoles[role] ||
-                    (null != defaultRole ? effectiveRoles[defaultRole] : null);
+                const pm = compiledRoles[role] ||
+                    (null != defaultRole ? compiledRoles[defaultRole] : null);
                 const canon = '' + ((msg.ent || msg.qent || {}).entity$ || '');
                 const [, ebase, ename] = canon.split('/');
                 const entity = ebase + '/' + ename;
-                const grant = policy && true === policy.entities ?
-                    { read: true, write: true } :
-                    ((policy && policy.entities &&
-                        (policy.entities[entity] || policy.entities[ename])) ||
-                        { read: false, write: false });
-                const needRead = 'load' === msg.cmd || 'list' === msg.cmd;
-                if (!(needRead ? grant.read : grant.write)) {
-                    explain && (expdata.role_denied = { role, entity, need: needRead ? 'read' : 'write' });
-                    if ('list' === msg.cmd) {
-                        return intern.reply(self, reply, [], explain, expdata);
-                    }
-                    if ('remove' === msg.cmd) {
-                        return intern.reply(self, reply, void 0, explain, expdata);
-                    }
-                    if ('save' === msg.cmd) {
-                        const fail = { code: 'role-entity-not-allowed', details: { role, entity } };
-                        return intern.fail(self, reply, fail, explain, expdata);
-                    }
-                    return intern.reply(self, reply, null, explain, expdata);
+                // No matching grant, or grant lacks this op -> deny.
+                const hit = pm && pm.find({ base: ebase, name: ename });
+                if (!hit || !hit.ops.has(msg.cmd)) {
+                    explain && (expdata.role_denied = { role, entity, cmd: msg.cmd });
+                    return intern.deny(self, reply, msg, role, entity, explain, expdata);
                 }
-                // org role stops enforcing the owner field; other fields stay enforced.
-                if (policy && policy.org) {
-                    spec.fields.forEach((f) => {
-                        const parts = ('' + f).split(':');
-                        const entField = null == parts[1] ? parts[0] : parts[1];
-                        if (entField === ownerfield) {
-                            spec.read[f] = false;
-                            spec.write[f] = false;
-                        }
-                    });
-                }
+                // Hand the role's spec fragment off to the one enforcement engine.
+                // make_spec re-unions fields from the read/write maps, so a grant that
+                // names extra fields never drops the base owner/tenant fields.
+                spec = intern.make_spec(hit.spec, spec);
             }
             explain &&
                 ((expdata.owner = owner), (expdata.spec = self.util.deepextend(spec)));
@@ -506,6 +518,21 @@ const intern = (Owner.intern = {
     fail: function (self, reply, fail, explain, expdata) {
         explain && explain(expdata);
         return reply(self.error(fail.code, fail.details));
+    },
+    // Role denial. Reads resolve to empty (list) or absent (load); writes fail
+    // loud on save, silently no-op on remove.
+    deny: function (self, reply, msg, role, entity, explain, expdata) {
+        explain && explain(expdata);
+        if ('list' === msg.cmd) {
+            return reply([]);
+        }
+        if ('remove' === msg.cmd) {
+            return reply(void 0);
+        }
+        if ('save' === msg.cmd) {
+            return reply(self.error('role-entity-not-allowed', { role, entity }));
+        }
+        return reply(null);
     },
     resolveFieldNames: (fieldName) => {
         const parts = fieldName.split(':');

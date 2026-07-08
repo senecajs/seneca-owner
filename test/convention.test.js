@@ -68,7 +68,8 @@ describe('convention', () => {
   // the custom role sits between them (junior -> member, senior -> admin).
   test('partial-custom-role-between-defaults', async () => {
     const s0 = await build({
-      manager: { org: true } // whole-org, full access by convention
+      // whole-org, full access by convention
+      manager: { scope: 'org', grants: [{ entity: '*' }] }
     })
 
     const mA0 = as(s0, 'u0', 'A', 'member')
@@ -101,9 +102,9 @@ describe('convention', () => {
   // default is injected. Distinct grants, org scope and bad actors validated.
   test('all-custom-roles', async () => {
     const s0 = await build({
-      member: { entities: ['sys/ticket'] },
-      support: { org: true, entities: ['sys/ticket'] },
-      admin: { org: true, entities: ['sys/billing'] }
+      member: { grants: [{ entity: 'sys/ticket' }] },
+      support: { scope: 'org', grants: [{ entity: 'sys/ticket' }] },
+      admin: { scope: 'org', grants: [{ entity: 'sys/billing' }] }
     })
 
     const mA0 = as(s0, 'u0', 'A', 'member')

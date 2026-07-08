@@ -23,7 +23,7 @@ describe('permission', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: {}
+          member: { grants: [{ entity: '*' }] }
         }
       })
       .ready()
@@ -85,9 +85,9 @@ describe('permission', () => {
         roles: {
           // member declared explicitly to restrict the baseline (read-only doc)
           // instead of the full-access convention default.
-          member: { entities: [{ 'sys/doc': { read: true } }] },
-          editor: { entities: ['sys/doc'] },
-          admin: { org: true, entities: ['sys/audit'] }
+          member: { grants: [{ entity: 'sys/doc', ops: ['list$', 'load$'] }] },
+          editor: { grants: [{ entity: 'sys/doc' }] },
+          admin: { scope: 'org', grants: [{ entity: 'sys/audit' }] }
         }
       })
       .ready()

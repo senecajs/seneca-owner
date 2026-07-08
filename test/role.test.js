@@ -16,8 +16,8 @@ describe('role', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { entities: ['sys/foo'] },
-          admin: { org: true, entities: true }
+          member: { grants: [{ entity: 'sys/foo' }] },
+          admin: { scope: 'org', grants: [{ entity: '*' }] }
         }
       })
       .ready()
@@ -50,8 +50,8 @@ describe('role', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { entities: ['sys/foo'] },
-          admin: { org: true, entities: true }
+          member: { grants: [{ entity: 'sys/foo' }] },
+          admin: { scope: 'org', grants: [{ entity: '*' }] }
         }
       })
       .ready()
@@ -80,7 +80,7 @@ describe('role', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { entities: ['sys/foo'] }
+          member: { grants: [{ entity: 'sys/foo' }] }
         }
       })
       .ready()
@@ -110,7 +110,7 @@ describe('role', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { entities: [{ 'sys/foo': { read: true } }] }
+          member: { grants: [{ entity: 'sys/foo', ops: ['list$', 'load$'] }] }
         }
       })
       .ready()
@@ -127,6 +127,80 @@ describe('role', () => {
 
     await expect(member.entity('sys/foo').save$({ y: 2 }))
       .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
+  })
+
+
+  test('op-gate-allows-save-but-denies-remove', async () => {
+    const s0 = await Seneca({ legacy: false })
+      .test()
+      .use('promisify')
+      .use('entity')
+      .use(Plugin, {
+        fields: ['owner_id'],
+        annotate: ['sys:entity'],
+        rolesys: true,
+        roles: {
+          // finer than read/write: everything except remove$
+          member: { grants: [{ entity: 'sys/foo', ops: ['list$', 'load$', 'save$'] }] }
+        }
+      })
+      .ready()
+
+    const member = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'u0', role: 'member' } }
+    })
+
+    const foo = await member.entity('sys/foo').save$({ x: 1 })
+    expect(foo).toMatchObject({ x: 1, owner_id: 'u0' })
+
+    // remove$ not granted => silent no-op, row still present
+    await member.entity('sys/foo').remove$(foo.id)
+    expect(await member.entity('sys/foo').load$(foo.id))
+      .toMatchObject({ id: foo.id })
+  })
+
+
+  test('per-entity-grant-relaxes-owner-field', async () => {
+    const s0 = await Seneca({ legacy: false })
+      .test()
+      .use('promisify')
+      .use('entity')
+      .use(Plugin, {
+        fields: ['owner_id'],
+        annotate: ['sys:entity'],
+        rolesys: true,
+        roles: {
+          // Field-level grant: on sys/public the owner_id read enforcement is
+          // turned off, so a member reads every owner's row there, while
+          // sys/note stays strictly own-rows. Same role, per-entity spec.
+          member: {
+            grants: [
+              { entity: 'sys/note' },
+              { entity: 'sys/public', spec: { read: { owner_id: false } } }
+            ]
+          }
+        }
+      })
+      .ready()
+
+    const u0 = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'u0', role: 'member' } }
+    })
+    const u1 = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'u1', role: 'member' } }
+    })
+
+    const note = await u0.entity('sys/note').save$({ x: 1 })
+    const pub = await u0.entity('sys/public').save$({ y: 2 })
+    expect(note).toMatchObject({ owner_id: 'u0' })
+    expect(pub).toMatchObject({ owner_id: 'u0' })
+
+    // sys/note stays own-rows: u1 cannot read u0's note.
+    expect(await u1.entity('sys/note').load$(note.id)).toEqual(null)
+
+    // sys/public relaxes the owner field: u1 reads u0's public row.
+    expect(await u1.entity('sys/public').load$(pub.id))
+      .toMatchObject({ id: pub.id, owner_id: 'u0' })
   })
 
 
@@ -158,7 +232,7 @@ describe('role', () => {
   })
 
 
-  test('role-no-entities-gets-full-access', async () => {
+  test('wildcard-grant-gets-full-access', async () => {
     const s0 = await Seneca({ legacy: false })
       .test()
       .use('promisify')
@@ -168,8 +242,8 @@ describe('role', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: {},
-          admin: { org: true }
+          member: { grants: [{ entity: '*' }] },
+          admin: { scope: 'org', grants: [{ entity: '*' }] }
         }
       })
       .ready()
@@ -178,7 +252,7 @@ describe('role', () => {
       custom: { sysowner: { owner_id: 'u0', role: 'member' } }
     })
 
-    // No entities declared => rw on any entity, still owner-scoped.
+    // wildcard => rw on any entity, still owner-scoped.
     const foo = await member.entity('sys/foo').save$({ x: 1 })
     expect(foo).toMatchObject({ x: 1, owner_id: 'u0' })
 
@@ -197,7 +271,7 @@ describe('role', () => {
   })
 
 
-  test('entity-listed-without-op-defaults-rw', async () => {
+  test('entity-listed-without-ops-defaults-all', async () => {
     const s0 = await Seneca({ legacy: false })
       .test()
       .use('promisify')
@@ -207,9 +281,9 @@ describe('role', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          // boolean flag and array form both => rw
-          member: { entities: ['sys/foo'] },
-          admin: { org: true, entities: ['sys/foo'] }
+          // no ops => all four ops granted
+          member: { grants: [{ entity: 'sys/foo' }] },
+          admin: { scope: 'org', grants: [{ entity: 'sys/foo' }] }
         }
       })
       .ready()
@@ -267,7 +341,7 @@ describe('role', () => {
         rolesys: true,
         defaultRole: null,
         roles: {
-          member: { entities: ['sys/foo'] }
+          member: { grants: [{ entity: 'sys/foo' }] }
         }
       })
       .ready()

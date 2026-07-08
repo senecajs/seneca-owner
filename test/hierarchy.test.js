@@ -27,9 +27,9 @@ describe('hierarchy', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { entities: ['sys/note'] },
-          lead: { org: true, entities: ['sys/report'] },
-          admin: { org: true, entities: ['sys/setting'] }
+          member: { grants: [{ entity: 'sys/note' }] },
+          lead: { scope: 'org', grants: [{ entity: 'sys/report' }] },
+          admin: { scope: 'org', grants: [{ entity: 'sys/setting' }] }
         }
       })
       .ready()
@@ -76,8 +76,8 @@ describe('hierarchy', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { entities: ['sys/note'] },
-          admin: { org: true, entities: ['sys/report'] }
+          member: { grants: [{ entity: 'sys/note' }] },
+          admin: { scope: 'org', grants: [{ entity: 'sys/report' }] }
         }
       })
       .ready()
@@ -113,8 +113,8 @@ describe('hierarchy', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { entities: ['sys/note'] },
-          admin: { org: true, entities: ['sys/report'] }
+          member: { grants: [{ entity: 'sys/note' }] },
+          admin: { scope: 'org', grants: [{ entity: 'sys/report' }] }
         }
       })
       .ready()
