@@ -6,6 +6,11 @@ const gubu_1 = require("gubu");
 const refine_query_1 = require("./refine_query");
 /* $lab:coverage:on$ */
 const { Open, Any } = gubu_1.Gubu;
+// Default role presets; caller roles merge over these (caller wins per role).
+// A role is a set of grants: entity-pattern -> allowed ops (+ optional spec
+// fragment). member: own rows on any entity. admin: whole tenant, any entity.
+// scope:'org' widens the user axis (first field) only; other fields, including
+// the tenant axis, always stay enforced so a role never leaves its tenant.
 const defaults_roles = {
     member: { grants: [{ entity: '*' }] },
     admin: { scope: 'org', grants: [{ entity: '*' }] }
@@ -84,11 +89,6 @@ function Owner(options) {
         if ('string' === typeof g) {
             g = { entity: g };
         }
-        // Default role presets; caller roles merge over these (caller wins per role).
-        // A role is a set of grants: entity-pattern -> allowed ops (+ optional spec
-        // fragment). member: own rows on any entity. admin: whole tenant, any entity.
-        // scope:'org' widens the user axis (first field) only; other fields, including
-        // the tenant axis, always stay enforced so a role never leaves its tenant.
         const all_ops = ['list$', 'load$', 'save$', 'remove$'];
         const ops = new Set((g.ops || all_ops).map((o) => ('' + o).replace(/\$$/, '')));
         return { entity: '' + g.entity, ops, spec: g.spec || {} };
@@ -152,17 +152,18 @@ function Owner(options) {
     // role reads/writes across users, while the tenant axis stays enforced.
     function buildGrantSpec(grantSpec, scopeOrg) {
         const spec = deep({}, grantSpec);
-        if (scopeOrg) {
-            spec.read = spec.read || {};
-            spec.write = spec.write || {};
-            (options.fields || []).forEach((f) => {
-                const parts = ('' + f).split(':');
-                const entField = null == parts[1] ? parts[0] : parts[1];
-                if (entField === ownerfield) {
-                    spec.read[f] = false;
-                    spec.write[f] = false;
-                }
-            });
+        if (!scopeOrg) {
+            return spec;
+        }
+        spec.read = spec.read || {};
+        spec.write = spec.write || {};
+        for (const field of (options.fields || [])) {
+            const parts = ('' + field).split(':');
+            const entField = null == parts[1] ? parts[0] : parts[1];
+            if (entField === ownerfield) {
+                spec.read[field] = false;
+                spec.write[field] = false;
+            }
         }
         return spec;
     }
