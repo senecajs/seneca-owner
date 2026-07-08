@@ -6,12 +6,25 @@ const gubu_1 = require("gubu");
 const refine_query_1 = require("./refine_query");
 /* $lab:coverage:on$ */
 const { Open, Any } = gubu_1.Gubu;
-// Preset used when `roles: true`. Declared junior -> senior.
-// Entities undeclared => full access by convention (see effectiveRoles below).
+// Convention roles, always present unless overridden: member (own rows) and
+// admin (whole tenant), both full read+write (entities undeclared => full
+// access, see effectiveRoles below). `admin`, not `owner`: `owner` already
+// names the data-owner axis in this plugin.
 const DEFAULT_ROLES = {
     member: { scope: 'own' },
-    orgowner: { scope: 'all' }
+    admin: { scope: 'all' }
 };
+// Assemble the role set junior -> senior: member -> ...declared... -> admin.
+// Declared roles slot in between the two defaults; declaring `member`/`admin`
+// overrides the default at that end. `true` selects the defaults alone.
+function buildRoles(declared) {
+    const src = true === declared ? {} : (declared || {});
+    const middles = Object.keys(src).filter((n) => 'member' !== n && 'admin' !== n);
+    const out = { member: src.member || DEFAULT_ROLES.member };
+    middles.forEach((n) => { out[n] = src[n]; });
+    out.admin = src.admin || DEFAULT_ROLES.admin;
+    return out;
+}
 // Normalize a single entity grant into { read, write } booleans.
 // Convention: a listed entity with no explicit operation (true / empty) => rw.
 // Object form is explicit: an absent flag is not granted. `false` denies both.
@@ -125,8 +138,13 @@ function Owner(options) {
     const roleP = options.roleprop;
     // Unset -> 'member' (most restrictive); explicit null -> deny unknown roles.
     const defaultRole = undefined === options.defaultRole ? 'member' : options.defaultRole;
-    const roles = true === options.roles ? DEFAULT_ROLES : (options.roles || {});
-    const hasRoles = 0 < Object.keys(roles).length;
+    // Roles enforced when opted in: `roles: true` (defaults only) or a role map.
+    // Absent/empty leaves plain ownership unchanged.
+    const rolesOpt = options.roles;
+    const hasRoles = true === rolesOpt ||
+        (null != rolesOpt && 'object' === typeof rolesOpt &&
+            0 < Object.keys(rolesOpt).length);
+    const roles = hasRoles ? buildRoles(rolesOpt) : {};
     // The per-user field a `scope:'all'` role stops enforcing (so it reads across
     // owners); every other field (e.g. an org tenant field) stays enforced.
     // Defaults to the first declared field.

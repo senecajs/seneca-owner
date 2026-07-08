@@ -11,9 +11,9 @@ const Plugin = require('..')
 // field (reads across users) but the org field still applies, so a role never
 // leaves its tenant.
 //
-//   member   -> own rows,  sys/note
-//   admin    -> whole org, sys/report (+ inherited sys/note)
-//   orgowner -> whole org, sys/setting (+ inherited sys/report, sys/note)
+//   member -> own rows,  sys/note
+//   lead   -> whole org, sys/report (+ inherited sys/note)
+//   admin  -> whole org, sys/setting (+ inherited sys/report, sys/note)
 
 describe('hierarchy', () => {
 
@@ -27,8 +27,8 @@ describe('hierarchy', () => {
         annotate: ['sys:entity'],
         roles: {
           member: { scope: 'own', entities: { 'sys/note': true } },
-          admin: { scope: 'all', entities: { 'sys/report': true } },
-          orgowner: { scope: 'all', entities: { 'sys/setting': true } }
+          lead: { scope: 'all', entities: { 'sys/report': true } },
+          admin: { scope: 'all', entities: { 'sys/setting': true } }
         }
       })
       .ready()
@@ -36,11 +36,11 @@ describe('hierarchy', () => {
     const member = s0.delegate(null, {
       custom: { sysowner: { owner_id: 'u0', org_id: 'A', role: 'member' } }
     })
-    const admin = s0.delegate(null, {
-      custom: { sysowner: { owner_id: 'a0', org_id: 'A', role: 'admin' } }
+    const lead = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'a0', org_id: 'A', role: 'lead' } }
     })
-    const orgowner = s0.delegate(null, {
-      custom: { sysowner: { owner_id: 'o0', org_id: 'A', role: 'orgowner' } }
+    const admin = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'o0', org_id: 'A', role: 'admin' } }
     })
 
     // member: only its own entity, nothing from senior roles.
@@ -49,19 +49,19 @@ describe('hierarchy', () => {
     await expect(member.entity('sys/report').save$({ x: 1 }))
       .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
 
-    // admin: own (report) + inherited junior (note); denied the senior entity.
-    const report = await admin.entity('sys/report').save$({ x: 2 })
+    // lead: own (report) + inherited junior (note); denied the senior entity.
+    const report = await lead.entity('sys/report').save$({ x: 2 })
     expect(report).toMatchObject({ owner_id: 'a0', org_id: 'A' })
-    const adminNote = await admin.entity('sys/note').save$({ x: 3 })
-    expect(adminNote).toMatchObject({ owner_id: 'a0', org_id: 'A' })
-    await expect(admin.entity('sys/setting').save$({ x: 1 }))
+    const leadNote = await lead.entity('sys/note').save$({ x: 3 })
+    expect(leadNote).toMatchObject({ owner_id: 'a0', org_id: 'A' })
+    await expect(lead.entity('sys/setting').save$({ x: 1 }))
       .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
 
-    // orgowner: own (setting) + everything inherited from below.
-    const setting = await orgowner.entity('sys/setting').save$({ x: 4 })
+    // admin: own (setting) + everything inherited from below.
+    const setting = await admin.entity('sys/setting').save$({ x: 4 })
     expect(setting).toMatchObject({ owner_id: 'o0', org_id: 'A' })
-    const ownerReport = await orgowner.entity('sys/report').save$({ x: 5 })
-    expect(ownerReport).toMatchObject({ org_id: 'A' })
+    const adminReport = await admin.entity('sys/report').save$({ x: 5 })
+    expect(adminReport).toMatchObject({ org_id: 'A' })
   })
 
 

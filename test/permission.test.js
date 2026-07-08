@@ -81,15 +81,17 @@ describe('permission', () => {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],
         roles: {
-          viewer: { scope: 'own', entities: { 'sys/doc': { read: true } } },
+          // member declared explicitly to restrict the baseline (read-only doc)
+          // instead of the full-access convention default.
+          member: { scope: 'own', entities: { 'sys/doc': { read: true } } },
           editor: { scope: 'own', entities: { 'sys/doc': true } },
           admin: { scope: 'all', entities: { 'sys/audit': true } }
         }
       })
       .ready()
 
-    const viewer = s0.delegate(null, {
-      custom: { sysowner: { owner_id: 'v0', org_id: 'A', role: 'viewer' } }
+    const member = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'u0', org_id: 'A', role: 'member' } }
     })
     const editor = s0.delegate(null, {
       custom: { sysowner: { owner_id: 'e0', org_id: 'A', role: 'editor' } }
@@ -111,11 +113,11 @@ describe('permission', () => {
     expect(await admin.entity('sys/doc').load$(doc.id))
       .toMatchObject({ id: doc.id, owner_id: 'e0' })
 
-    // Viewer: read granted on its own doc, but write denied.
-    const own = await s0.entity('sys/doc').save$({ owner_id: 'v0', org_id: 'A', t: 'x' })
-    expect(await viewer.entity('sys/doc').load$(own.id))
-      .toMatchObject({ id: own.id, owner_id: 'v0' })
-    await expect(viewer.entity('sys/doc').save$({ t: 'y' }))
+    // member: read granted on its own doc, but write denied.
+    const own = await s0.entity('sys/doc').save$({ owner_id: 'u0', org_id: 'A', t: 'x' })
+    expect(await member.entity('sys/doc').load$(own.id))
+      .toMatchObject({ id: own.id, owner_id: 'u0' })
+    await expect(member.entity('sys/doc').save$({ t: 'y' }))
       .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
 
     // Bad actor: editor cannot reach the senior-only sys/audit entity.
@@ -125,7 +127,7 @@ describe('permission', () => {
       .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
 
     // Bad actor: an entity granted to no role is denied for everyone.
-    for (const actor of [viewer, editor, admin]) {
+    for (const actor of [member, editor, admin]) {
       expect(await actor.entity('sys/secret').load$('any-id')).toEqual(null)
       expect(await actor.entity('sys/secret').list$()).toEqual([])
       await expect(actor.entity('sys/secret').save$({ t: 'q' }))
