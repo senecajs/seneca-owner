@@ -75,51 +75,52 @@ function Owner(options) {
     const default_spec = intern.make_spec(options.default_spec, {});
     // Order roles member -> middles -> admin so hierarchy inheritance is stable.
     function buildRoles() {
-        const src = Object.assign({}, defaults_roles, options.roles);
-        const middles = Object.keys(src).filter((n) => 'member' !== n && 'admin' !== n);
-        const out = { member: src.member };
-        middles.forEach((n) => { out[n] = src[n]; });
-        out.admin = src.admin;
-        return out;
+        const merged = Object.assign({}, defaults_roles, options.roles);
+        const middleRoles = Object.keys(merged)
+            .filter((name) => 'member' !== name && 'admin' !== name);
+        const ordered = { member: merged.member };
+        middleRoles.forEach((name) => { ordered[name] = merged[name]; });
+        ordered.admin = merged.admin;
+        return ordered;
     }
     // A grant is a string entity pattern or { entity, ops?, spec? }. Normalize to
     // { entity, ops:Set<cmd>, spec }. ops use seneca method names (list$ ...) so
     // the config speaks the ORM's language; strip the $ to match msg.cmd.
-    function normalizeGrant(g) {
-        if ('string' === typeof g) {
-            g = { entity: g };
+    function normalizeGrant(grant) {
+        if ('string' === typeof grant) {
+            grant = { entity: grant };
         }
-        const all_ops = ['list$', 'load$', 'save$', 'remove$'];
-        const ops = new Set((g.ops || all_ops).map((o) => ('' + o).replace(/\$$/, '')));
-        return { entity: '' + g.entity, ops, spec: g.spec || {} };
+        const allOps = ['list$', 'load$', 'save$', 'remove$'];
+        const ops = new Set((grant.ops || allOps).map((op) => ('' + op).replace(/\$$/, '')));
+        return { entity: '' + grant.entity, ops, spec: grant.spec || {} };
     }
     // Deep-merge two grant lists into a superset keyed by entity: ops union,
     // later (senior) spec fragment wins. Used for hierarchy inheritance.
     function mergeGrantLists(base, add) {
         const byEntity = {};
-        base.concat(add).forEach((g) => {
-            const prev = byEntity[g.entity];
+        base.concat(add).forEach((grant) => {
+            const prev = byEntity[grant.entity];
             if (!prev) {
-                byEntity[g.entity] = {
-                    entity: g.entity,
-                    ops: new Set(g.ops),
-                    spec: deep({}, g.spec)
+                byEntity[grant.entity] = {
+                    entity: grant.entity,
+                    ops: new Set(grant.ops),
+                    spec: deep({}, grant.spec)
                 };
             }
             else {
-                g.ops.forEach((o) => prev.ops.add(o));
-                prev.spec = deep(prev.spec, g.spec);
+                grant.ops.forEach((op) => prev.ops.add(op));
+                prev.spec = deep(prev.spec, grant.spec);
             }
         });
-        return Object.keys(byEntity).map((k) => byEntity[k]);
+        return Object.values(byEntity);
     }
     // Entity pattern -> Patrun match key. '*' any, 'base/*' whole base, else exact.
     function entityPat(entity) {
         if ('*' === entity) {
             return {};
         }
-        const [b, n] = entity.split('/');
-        return (null == n || '*' === n) ? { base: b } : { base: b, name: n };
+        const [base, name] = entity.split('/');
+        return (null == name || '*' === name) ? { base } : { base, name };
     }
     const casemap = {};
     this.fix('sys:owner').add('hook:case', hook_case);
@@ -159,8 +160,8 @@ function Owner(options) {
         spec.write = spec.write || {};
         for (const field of (options.fields || [])) {
             const parts = ('' + field).split(':');
-            const entField = null == parts[1] ? parts[0] : parts[1];
-            if (entField === ownerfield) {
+            const entityField = null == parts[1] ? parts[0] : parts[1];
+            if (entityField === ownerfield) {
                 spec.read[field] = false;
                 spec.write[field] = false;
             }
@@ -171,19 +172,19 @@ function Owner(options) {
     // junior -> senior; a senior deep-merges every junior grant (superset), then
     // its own, so a senior can never have less access than a junior below it.
     function compileRoles() {
-        const src = buildRoles();
+        const orderedRoles = buildRoles();
         const compiled = {};
         let inherited = [];
-        Object.keys(src).forEach((name) => {
-            const role = src[name] || {};
+        Object.keys(orderedRoles).forEach((name) => {
+            const role = orderedRoles[name] || {};
             const scopeOrg = 'org' === role.scope;
-            const own = (role.grants || []).map(normalizeGrant);
-            inherited = mergeGrantLists(inherited, own);
-            const pm = seneca.util.Patrun();
-            inherited.forEach((g) => {
-                pm.add(entityPat(g.entity), { ops: g.ops, spec: buildGrantSpec(g.spec, scopeOrg) });
+            const ownGrants = (role.grants || []).map(normalizeGrant);
+            inherited = mergeGrantLists(inherited, ownGrants);
+            const patrun = seneca.util.Patrun();
+            inherited.forEach((grant) => {
+                patrun.add(entityPat(grant.entity), { ops: grant.ops, spec: buildGrantSpec(grant.spec, scopeOrg) });
             });
-            compiled[name] = pm;
+            compiled[name] = patrun;
         });
         return compiled;
     }
@@ -229,21 +230,21 @@ function Owner(options) {
             }
             if (rolesys && owner) {
                 const role = null != owner[roleP] ? owner[roleP] : defaultRole;
-                const pm = compiledRoles[role]
+                const rolePatrun = compiledRoles[role]
                     || (null != defaultRole ? compiledRoles[defaultRole] : null);
-                const canon = '' + ((msg.ent || msg.qent || {}).entity$ || '');
-                const [, ebase, ename] = canon.split('/');
-                const entity = ebase + '/' + ename;
+                const targetEnt = msg.ent || msg.qent;
+                const { base, name } = targetEnt ? targetEnt.canon$({ object: true }) : {};
+                const entity = base + '/' + name;
                 // No matching grant, or grant lacks this op -> deny.
-                const hit = pm && pm.find({ base: ebase, name: ename });
-                if (!hit || !hit.ops.has(msg.cmd)) {
+                const grant = rolePatrun && rolePatrun.find({ base, name });
+                if (!grant || !grant.ops.has(msg.cmd)) {
                     explain && (expdata.role_denied = { role, entity, cmd: msg.cmd });
                     return intern.deny(self, reply, msg, role, entity, explain, expdata);
                 }
                 // Hand the role's spec fragment off to the one enforcement engine.
                 // make_spec re-unions fields from the read/write maps, so a grant that
                 // names extra fields never drops the base owner/tenant fields.
-                spec = intern.make_spec(hit.spec, spec);
+                spec = intern.make_spec(grant.spec, spec);
             }
             explain &&
                 ((expdata.owner = owner), (expdata.spec = self.util.deepextend(spec)));
