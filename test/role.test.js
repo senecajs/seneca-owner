@@ -14,6 +14,7 @@ describe('role', () => {
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
+        rolesys: true,
         roles: {
           member: { scope: 'own', entities: ['sys/foo'] },
           admin: { scope: 'all', entities: true }
@@ -47,6 +48,7 @@ describe('role', () => {
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
+        rolesys: true,
         roles: {
           member: { scope: 'own', entities: ['sys/foo'] },
           admin: { scope: 'all', entities: true }
@@ -76,6 +78,7 @@ describe('role', () => {
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
+        rolesys: true,
         roles: {
           member: { scope: 'own', entities: ['sys/foo'] }
         }
@@ -105,6 +108,7 @@ describe('role', () => {
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
+        rolesys: true,
         roles: {
           member: { scope: 'own', entities: [{ 'sys/foo': { read: true } }] }
         }
@@ -134,6 +138,7 @@ describe('role', () => {
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
+        rolesys: true,
         roles: true
       })
       .ready()
@@ -161,6 +166,7 @@ describe('role', () => {
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
+        rolesys: true,
         roles: {
           member: { scope: 'own' },
           admin: { scope: 'all' }
@@ -199,6 +205,7 @@ describe('role', () => {
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
+        rolesys: true,
         roles: {
           // boolean flag and array form both => rw
           member: { scope: 'own', entities: ['sys/foo'] },
@@ -257,6 +264,7 @@ describe('role', () => {
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
+        rolesys: true,
         defaultRole: null,
         roles: {
           member: { scope: 'own', entities: ['sys/foo'] }

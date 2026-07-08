@@ -25,6 +25,7 @@ describe('hierarchy', () => {
       .use(Plugin, {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],
+        rolesys: true,
         roles: {
           member: { scope: 'own', entities: ['sys/note'] },
           lead: { scope: 'all', entities: ['sys/report'] },
@@ -73,6 +74,7 @@ describe('hierarchy', () => {
       .use(Plugin, {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],
+        rolesys: true,
         roles: {
           member: { scope: 'own', entities: ['sys/note'] },
           admin: { scope: 'all', entities: ['sys/report'] }
@@ -109,6 +111,7 @@ describe('hierarchy', () => {
       .use(Plugin, {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],
+        rolesys: true,
         roles: {
           member: { scope: 'own', entities: ['sys/note'] },
           admin: { scope: 'all', entities: ['sys/report'] }

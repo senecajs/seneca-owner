@@ -21,6 +21,7 @@ describe('permission', () => {
       .use(Plugin, {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],
+        rolesys: true,
         roles: {
           member: { scope: 'own' }
         }
@@ -80,6 +81,7 @@ describe('permission', () => {
       .use(Plugin, {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],
+        rolesys: true,
         roles: {
           // member declared explicitly to restrict the baseline (read-only doc)
           // instead of the full-access convention default.

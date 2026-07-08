@@ -12,61 +12,11 @@ import { refine_query } from './refine_query'
 const { Open, Any } = Gubu
 
 
-// Convention roles, always present unless overridden: member (own rows) and
-// admin (whole tenant), both full read+write (entities undeclared => full
-// access, see effectiveRoles below). `admin`, not `owner`: `owner` already
-// names the data-owner axis in this plugin.
-const DEFAULT_ROLES = {
+// Default role presets; caller roles merge over these (caller wins per role).
+// No entities => full read+write, scoped by own/all.
+const default_roles = {
   member: { scope: 'own' },
   admin: { scope: 'all' }
-}
-
-
-// Assemble the role set junior -> senior: member -> ...declared... -> admin.
-// Declared roles slot in between the two defaults; declaring `member`/`admin`
-// overrides the default at that end. `true` selects the defaults alone.
-function buildRoles(declared: any) {
-  const src = true === declared ? {} : (declared || {})
-  const middles = Object.keys(src).filter(
-    (n) => 'member' !== n && 'admin' !== n)
-  const out: any = { member: src.member || DEFAULT_ROLES.member }
-  middles.forEach((n) => { out[n] = src[n] })
-  out.admin = src.admin || DEFAULT_ROLES.admin
-  return out
-}
-
-
-// Normalize a declared entity-grant array into a
-// { 'base/name': { read, write } } map. Declared entities are always an array.
-// A string element grants full read+write on that entity; an object element
-// { 'base/name': { read, write } } limits it to the listed operations.
-function normalizeEntities(ent: any) {
-  const out: any = {}
-  ;(ent || []).forEach((item: any) => {
-    if ('string' === typeof item) {
-      out[item] = { read: true, write: true }
-    }
-    else {
-      for (const k in item) {
-        out[k] = { read: !!item[k].read, write: !!item[k].write }
-      }
-    }
-  })
-  return out
-}
-
-
-// Merge two entity-grant maps, keeping the wider permission per entity.
-function mergeGrant(a: any, b: any) {
-  const out: any = {}
-  for (const k in a) {
-    out[k] = { read: !!a[k].read, write: !!a[k].write }
-  }
-  for (const k in b) {
-    const p = out[k] || { read: false, write: false }
-    out[k] = { read: p.read || b[k].read, write: p.write || b[k].write }
-  }
-  return out
 }
 
 
@@ -106,8 +56,9 @@ const defaults = {
   caseprop: 'case$',
   roleprop: 'role',
   defaultRole: Any(),
-  roles: Any(),
   ownerfield: Any(),
+  rolesys: false,
+  roles: Any(default_roles),
   entprop: 'ent',
   queryprop: 'q',
   annotate: [],
@@ -136,6 +87,52 @@ function Owner(this: any, options: any) {
   // intern.default_spec = intern.make_spec(options.default_spec)
   const default_spec = intern.make_spec(options.default_spec, {})
 
+  // Order roles member -> middles -> admin so hierarchy inheritance is stable.
+  function buildRoles() {
+    const src = Object.assign({}, default_roles, options.roles)
+
+    const middles = Object.keys(src).filter((n) => 'member' !== n && 'admin' !== n)
+
+    const out: any = { member: src.member }
+    middles.forEach((n) => { out[n] = src[n] })
+    out.admin = src.admin
+
+    return out
+  }
+
+  function normalizeEntities(ent: any) {
+    const out: any = {}
+
+    ent.forEach((item: any) => {
+      if ('string' === typeof item) {
+        out[item] = { read: true, write: true }
+      }
+
+      else {
+        for (const k in item) {
+          out[k] = { read: !!item[k].read, write: !!item[k].write }
+        }
+      }
+    })
+
+    return out
+  }
+
+
+  function mergeGrant(a: any, b: any) {
+    const out: any = {}
+
+    for (const k in a) {
+      out[k] = { read: !!a[k].read, write: !!a[k].write }
+    }
+
+    for (const k in b) {
+      const p = out[k] || { read: false, write: false }
+      out[k] = { read: p.read || b[k].read, write: p.write || b[k].write }
+    }
+
+    return out
+  }
 
 
   const casemap: any = {}
@@ -160,34 +157,26 @@ function Owner(this: any, options: any) {
   const entprop = options.entprop
   const queryprop = options.queryprop
   const roleP = options.roleprop
-  // Unset -> 'member' (most restrictive); explicit null -> deny unknown roles.
+  // Unset -> 'member'; explicit null -> deny unknown roles.
   const defaultRole =
     undefined === options.defaultRole ? 'member' : options.defaultRole
-  // Roles enforced when opted in: `roles: true` (defaults only) or a role map.
-  // Absent/empty leaves plain ownership unchanged.
-  const rolesOpt = options.roles
-  const hasRoles = true === rolesOpt ||
-    (null != rolesOpt && 'object' === typeof rolesOpt &&
-      0 < Object.keys(rolesOpt).length)
-  const roles = hasRoles ? buildRoles(rolesOpt) : {}
 
-  // The per-user field a `scope:'all'` role stops enforcing (so it reads across
-  // owners); every other field (e.g. an org tenant field) stays enforced.
-  // Defaults to the first declared field.
+  // rolesys gates all role enforcement; false -> plain ownership only.
+  const rolesys = true === options.rolesys
+  const roles = rolesys ? buildRoles() : {}
+
+  // Field a `scope:'all'` role stops enforcing; defaults to first declared field.
   const firstField = '' + ((options.fields || [])[0] || 'owner_id')
   const ownerfield =
     options.ownerfield || (firstField.split(':')[1] || firstField.split(':')[0])
 
-  // Role hierarchy: a senior role (declared later) inherits the entity grants
-  // of every role declared before it, so it can reach the roles below it.
+  // Senior role inherits entity grants of every role declared before it.
   const effectiveRoles: any = {}
-  if (hasRoles) {
+  if (rolesys) {
     let acc: any = {}
     let accAll = false
     Object.keys(roles).forEach((name: any) => {
       const r = roles[name] || {}
-      // Convention: entities undeclared (or `true`) => full access. Declaring
-      // any entity opts the role into allowlist mode (unlisted entities denied).
       const ent = null == r.entities ? true : r.entities
       if (true === ent) {
         accAll = true
@@ -253,7 +242,7 @@ function Owner(this: any, options: any) {
         spec = modifiers.query.call(self, spec, owner, msg)
       }
 
-      if (hasRoles && owner) {
+      if (rolesys && owner) {
         const role = null != owner[roleP] ? owner[roleP] : defaultRole
         const policy = effectiveRoles[role] ||
           (null != defaultRole ? effectiveRoles[defaultRole] : null)
@@ -285,8 +274,7 @@ function Owner(this: any, options: any) {
           return intern.reply(self, reply, null, explain, expdata)
         }
 
-        // scope 'all' stops enforcing the owner field (reads across owners);
-        // other fields such as the org tenant field stay enforced.
+        // scope 'all' stops enforcing the owner field; other fields stay enforced.
         if (policy && 'all' === policy.scope) {
           spec.fields.forEach((f: any) => {
             const parts = ('' + f).split(':')

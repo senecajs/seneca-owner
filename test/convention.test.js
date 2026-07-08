@@ -18,6 +18,7 @@ const build = (roles) =>
     .use(Plugin, {
       fields: ['owner_id', 'org_id'],
       annotate: ['sys:entity'],
+      rolesys: true,
       roles
     })
     .ready()
