@@ -7,10 +7,10 @@ const refine_query_1 = require("./refine_query");
 /* $lab:coverage:on$ */
 const { Open, Any } = gubu_1.Gubu;
 // Default role presets; caller roles merge over these (caller wins per role).
-// No entities => full read+write, scoped by own/all.
+// No entities => full read+write. org:true => whole org, else owner's own rows.
 const default_roles = {
-    member: { scope: 'own' },
-    admin: { scope: 'all' }
+    member: {},
+    admin: { org: true }
 };
 const defaults = {
     default_spec: {
@@ -126,7 +126,7 @@ function Owner(options) {
     // rolesys gates all role enforcement; false -> plain ownership only.
     const rolesys = true === options.rolesys;
     const roles = rolesys ? buildRoles() : {};
-    // Field a `scope:'all'` role stops enforcing; defaults to first declared field.
+    // Field an org role stops enforcing; defaults to first declared field.
     const firstField = '' + ((options.fields || [])[0] || 'owner_id');
     const ownerfield = options.ownerfield || (firstField.split(':')[1] || firstField.split(':')[0]);
     // Senior role inherits entity grants of every role declared before it.
@@ -144,7 +144,7 @@ function Owner(options) {
                 acc = mergeGrant(acc, normalizeEntities(ent));
             }
             effectiveRoles[name] = {
-                scope: r.scope || 'own',
+                org: !!r.org,
                 entities: accAll ? true : Object.assign({}, acc)
             };
         });
@@ -215,8 +215,8 @@ function Owner(options) {
                     }
                     return intern.reply(self, reply, null, explain, expdata);
                 }
-                // scope 'all' stops enforcing the owner field; other fields stay enforced.
-                if (policy && 'all' === policy.scope) {
+                // org role stops enforcing the owner field; other fields stay enforced.
+                if (policy && policy.org) {
                     spec.fields.forEach((f) => {
                         const parts = ('' + f).split(':');
                         const entField = null == parts[1] ? parts[0] : parts[1];

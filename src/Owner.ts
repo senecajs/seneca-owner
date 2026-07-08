@@ -13,10 +13,10 @@ const { Open, Any } = Gubu
 
 
 // Default role presets; caller roles merge over these (caller wins per role).
-// No entities => full read+write, scoped by own/all.
+// No entities => full read+write. org:true => whole org, else owner's own rows.
 const default_roles = {
-  member: { scope: 'own' },
-  admin: { scope: 'all' }
+  member: {},
+  admin: { org: true }
 }
 
 
@@ -165,7 +165,7 @@ function Owner(this: any, options: any) {
   const rolesys = true === options.rolesys
   const roles = rolesys ? buildRoles() : {}
 
-  // Field a `scope:'all'` role stops enforcing; defaults to first declared field.
+  // Field an org role stops enforcing; defaults to first declared field.
   const firstField = '' + ((options.fields || [])[0] || 'owner_id')
   const ownerfield =
     options.ownerfield || (firstField.split(':')[1] || firstField.split(':')[0])
@@ -185,7 +185,7 @@ function Owner(this: any, options: any) {
         acc = mergeGrant(acc, normalizeEntities(ent))
       }
       effectiveRoles[name] = {
-        scope: r.scope || 'own',
+        org: !!r.org,
         entities: accAll ? true : Object.assign({}, acc)
       }
     })
@@ -274,8 +274,8 @@ function Owner(this: any, options: any) {
           return intern.reply(self, reply, null, explain, expdata)
         }
 
-        // scope 'all' stops enforcing the owner field; other fields stay enforced.
-        if (policy && 'all' === policy.scope) {
+        // org role stops enforcing the owner field; other fields stay enforced.
+        if (policy && policy.org) {
           spec.fields.forEach((f: any) => {
             const parts = ('' + f).split(':')
             const entField = null == parts[1] ? parts[0] : parts[1]

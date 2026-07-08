@@ -7,7 +7,7 @@ const Plugin = require('..')
 // A single owner instance scopes by BOTH owner_id and org_id: list `fields`
 // with the owner field first (the per-user axis) and the org field after (the
 // tenant axis). Roles are declared junior -> senior; a senior role inherits
-// every junior role's entity grants. `scope:'all'` stops enforcing the owner
+// every junior role's entity grants. an org role stops enforcing the owner
 // field (reads across users) but the org field still applies, so a role never
 // leaves its tenant.
 //
@@ -27,9 +27,9 @@ describe('hierarchy', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { scope: 'own', entities: ['sys/note'] },
-          lead: { scope: 'all', entities: ['sys/report'] },
-          admin: { scope: 'all', entities: ['sys/setting'] }
+          member: { entities: ['sys/note'] },
+          lead: { org: true, entities: ['sys/report'] },
+          admin: { org: true, entities: ['sys/setting'] }
         }
       })
       .ready()
@@ -76,8 +76,8 @@ describe('hierarchy', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { scope: 'own', entities: ['sys/note'] },
-          admin: { scope: 'all', entities: ['sys/report'] }
+          member: { entities: ['sys/note'] },
+          admin: { org: true, entities: ['sys/report'] }
         }
       })
       .ready()
@@ -97,7 +97,7 @@ describe('hierarchy', () => {
     // a peer member (same level) cannot see another member's row
     expect(await member1.entity('sys/note').load$(note.id)).toEqual(null)
 
-    // the senior admin (scope:'all') sees it
+    // the senior admin (org role) sees it
     expect(await admin.entity('sys/note').load$(note.id))
       .toMatchObject({ id: note.id, owner_id: 'u0', org_id: 'A' })
   })
@@ -113,8 +113,8 @@ describe('hierarchy', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { scope: 'own', entities: ['sys/note'] },
-          admin: { scope: 'all', entities: ['sys/report'] }
+          member: { entities: ['sys/note'] },
+          admin: { org: true, entities: ['sys/report'] }
         }
       })
       .ready()
@@ -136,7 +136,7 @@ describe('hierarchy', () => {
     const noteB = await memberB.entity('sys/note').save$({ x: 2 })
 
     // admin sees its own org's row, but not the other org's (org_id stays
-    // enforced even for a scope:'all' role)
+    // enforced even for a org role role)
     expect(await adminA.entity('sys/note').load$(noteA.id))
       .toMatchObject({ id: noteA.id, org_id: 'A' })
     expect(await adminB.entity('sys/note').load$(noteA.id)).toEqual(null)

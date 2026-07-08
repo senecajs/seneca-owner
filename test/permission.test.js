@@ -23,7 +23,7 @@ describe('permission', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { scope: 'own' }
+          member: {}
         }
       })
       .ready()
@@ -85,9 +85,9 @@ describe('permission', () => {
         roles: {
           // member declared explicitly to restrict the baseline (read-only doc)
           // instead of the full-access convention default.
-          member: { scope: 'own', entities: [{ 'sys/doc': { read: true } }] },
-          editor: { scope: 'own', entities: ['sys/doc'] },
-          admin: { scope: 'all', entities: ['sys/audit'] }
+          member: { entities: [{ 'sys/doc': { read: true } }] },
+          editor: { entities: ['sys/doc'] },
+          admin: { org: true, entities: ['sys/audit'] }
         }
       })
       .ready()
@@ -108,7 +108,7 @@ describe('permission', () => {
     expect(await editor.entity('sys/doc').load$(doc.id))
       .toMatchObject({ id: doc.id, owner_id: 'e0' })
 
-    // Happy path: admin writes audit, and (scope:'all' + inherited doc) reads
+    // Happy path: admin writes audit, and (org role + inherited doc) reads
     // the editor's doc within the same org.
     const audit = await admin.entity('sys/audit').save$({ t: 'log' })
     expect(audit).toMatchObject({ owner_id: 'm0', org_id: 'A' })

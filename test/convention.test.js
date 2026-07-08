@@ -68,7 +68,7 @@ describe('convention', () => {
   // the custom role sits between them (junior -> member, senior -> admin).
   test('partial-custom-role-between-defaults', async () => {
     const s0 = await build({
-      manager: { scope: 'all' } // whole-org, full access by convention
+      manager: { org: true } // whole-org, full access by convention
     })
 
     const mA0 = as(s0, 'u0', 'A', 'member')
@@ -81,7 +81,7 @@ describe('convention', () => {
     const nA = await mA0.entity('sys/note').save$({ x: 1 })
     const nC = await mC0.entity('sys/note').save$({ x: 2 })
 
-    // manager (custom, scope:'all') reads across owners in its own org; the
+    // manager (custom, org role) reads across owners in its own org; the
     // admin default is still present and sees it too.
     expect(await gA.entity('sys/note').load$(nA.id))
       .toMatchObject({ id: nA.id, owner_id: 'u0' })
@@ -101,9 +101,9 @@ describe('convention', () => {
   // default is injected. Distinct grants, org scope and bad actors validated.
   test('all-custom-roles', async () => {
     const s0 = await build({
-      member: { scope: 'own', entities: ['sys/ticket'] },
-      support: { scope: 'all', entities: ['sys/ticket'] },
-      admin: { scope: 'all', entities: ['sys/billing'] }
+      member: { entities: ['sys/ticket'] },
+      support: { org: true, entities: ['sys/ticket'] },
+      admin: { org: true, entities: ['sys/billing'] }
     })
 
     const mA0 = as(s0, 'u0', 'A', 'member')

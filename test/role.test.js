@@ -16,8 +16,8 @@ describe('role', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { scope: 'own', entities: ['sys/foo'] },
-          admin: { scope: 'all', entities: true }
+          member: { entities: ['sys/foo'] },
+          admin: { org: true, entities: true }
         }
       })
       .ready()
@@ -50,8 +50,8 @@ describe('role', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { scope: 'own', entities: ['sys/foo'] },
-          admin: { scope: 'all', entities: true }
+          member: { entities: ['sys/foo'] },
+          admin: { org: true, entities: true }
         }
       })
       .ready()
@@ -80,7 +80,7 @@ describe('role', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { scope: 'own', entities: ['sys/foo'] }
+          member: { entities: ['sys/foo'] }
         }
       })
       .ready()
@@ -110,7 +110,7 @@ describe('role', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { scope: 'own', entities: [{ 'sys/foo': { read: true } }] }
+          member: { entities: [{ 'sys/foo': { read: true } }] }
         }
       })
       .ready()
@@ -168,8 +168,8 @@ describe('role', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { scope: 'own' },
-          admin: { scope: 'all' }
+          member: {},
+          admin: { org: true }
         }
       })
       .ready()
@@ -208,8 +208,8 @@ describe('role', () => {
         rolesys: true,
         roles: {
           // boolean flag and array form both => rw
-          member: { scope: 'own', entities: ['sys/foo'] },
-          admin: { scope: 'all', entities: ['sys/foo'] }
+          member: { entities: ['sys/foo'] },
+          admin: { org: true, entities: ['sys/foo'] }
         }
       })
       .ready()
@@ -267,7 +267,7 @@ describe('role', () => {
         rolesys: true,
         defaultRole: null,
         roles: {
-          member: { scope: 'own', entities: ['sys/foo'] }
+          member: { entities: ['sys/foo'] }
         }
       })
       .ready()
