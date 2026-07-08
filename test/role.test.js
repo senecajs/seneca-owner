@@ -247,4 +247,37 @@ describe('role', () => {
     const notOwned = await u1.entity('sys/foo').load$(foo.id)
     expect(notOwned).toEqual(null)
   })
+
+
+  test('defaultRole-null-denies-unknown-role', async () => {
+    const s0 = await Seneca({ legacy: false })
+      .test()
+      .use('promisify')
+      .use('entity')
+      .use(Plugin, {
+        fields: ['owner_id'],
+        annotate: ['sys:entity'],
+        defaultRole: null,
+        roles: {
+          member: { scope: 'own', entities: { 'sys/foo': true } }
+        }
+      })
+      .ready()
+
+    const known = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'u0', role: 'member' } }
+    })
+    const unknown = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'u1', role: 'hacker' } }
+    })
+
+    const foo = await known.entity('sys/foo').save$({ x: 1 })
+    expect(foo).toMatchObject({ x: 1, owner_id: 'u0' })
+
+    // unknown role denied entirely
+    expect(await unknown.entity('sys/foo').load$('any-id')).toEqual(null)
+    expect(await unknown.entity('sys/foo').list$()).toEqual([])
+    await expect(unknown.entity('sys/foo').save$({ x: 2 }))
+      .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
+  })
 })

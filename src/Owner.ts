@@ -37,11 +37,12 @@ function buildRoles(declared: any) {
 
 
 // Normalize a single entity grant into { read, write } booleans.
-// Convention: a listed entity with no explicit operation (true / empty) => rw.
+// Convention: a listed entity with no explicit operation (true / empty / {}) => rw.
 // Object form is explicit: an absent flag is not granted. `false` denies both.
 function normalizeGrant(v: any) {
   if (null == v || true === v) return { read: true, write: true }
   if (false === v) return { read: false, write: false }
+  if ('object' === typeof v && 0 === Object.keys(v).length) return { read: true, write: true }
   return { read: !!v.read, write: !!v.write }
 }
 
