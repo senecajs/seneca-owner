@@ -6,13 +6,7 @@ const gubu_1 = require("gubu");
 const refine_query_1 = require("./refine_query");
 /* $lab:coverage:on$ */
 const { Open, Any } = gubu_1.Gubu;
-// Default role presets; caller roles merge over these (caller wins per role).
-// A role is a set of grants: entity-pattern -> allowed ops (+ optional spec
-// fragment). member: own rows on any entity. admin: whole tenant, any entity.
-// scope:'org' widens the user axis (first field) only; other fields, including
-// the tenant axis, always stay enforced so a role never leaves its tenant.
-const ALL_OPS = ['list$', 'load$', 'save$', 'remove$'];
-const default_roles = {
+const defaults_roles = {
     member: { grants: [{ entity: '*' }] },
     admin: { scope: 'org', grants: [{ entity: '*' }] }
 };
@@ -53,7 +47,7 @@ const defaults = {
     defaultRole: Any(),
     ownerfield: Any(),
     rolesys: false,
-    roles: Any(default_roles),
+    roles: Any(defaults_roles),
     entprop: 'ent',
     queryprop: 'q',
     annotate: [],
@@ -76,7 +70,7 @@ function Owner(options) {
     const default_spec = intern.make_spec(options.default_spec, {});
     // Order roles member -> middles -> admin so hierarchy inheritance is stable.
     function buildRoles() {
-        const src = Object.assign({}, default_roles, options.roles);
+        const src = Object.assign({}, defaults_roles, options.roles);
         const middles = Object.keys(src).filter((n) => 'member' !== n && 'admin' !== n);
         const out = { member: src.member };
         middles.forEach((n) => { out[n] = src[n]; });
@@ -90,7 +84,13 @@ function Owner(options) {
         if ('string' === typeof g) {
             g = { entity: g };
         }
-        const ops = new Set((g.ops || ALL_OPS).map((o) => ('' + o).replace(/\$$/, '')));
+        // Default role presets; caller roles merge over these (caller wins per role).
+        // A role is a set of grants: entity-pattern -> allowed ops (+ optional spec
+        // fragment). member: own rows on any entity. admin: whole tenant, any entity.
+        // scope:'org' widens the user axis (first field) only; other fields, including
+        // the tenant axis, always stay enforced so a role never leaves its tenant.
+        const all_ops = ['list$', 'load$', 'save$', 'remove$'];
+        const ops = new Set((g.ops || all_ops).map((o) => ('' + o).replace(/\$$/, '')));
         return { entity: '' + g.entity, ops, spec: g.spec || {} };
     }
     // Deep-merge two grant lists into a superset keyed by entity: ops union,
@@ -100,8 +100,11 @@ function Owner(options) {
         base.concat(add).forEach((g) => {
             const prev = byEntity[g.entity];
             if (!prev) {
-                byEntity[g.entity] =
-                    { entity: g.entity, ops: new Set(g.ops), spec: deep({}, g.spec) };
+                byEntity[g.entity] = {
+                    entity: g.entity,
+                    ops: new Set(g.ops),
+                    spec: deep({}, g.spec)
+                };
             }
             else {
                 g.ops.forEach((o) => prev.ops.add(o));
@@ -142,7 +145,9 @@ function Owner(options) {
     // The user axis is the first declared field; scope:'org' stops enforcing it.
     // Everything after it (incl. the tenant axis) always stays enforced.
     const firstField = '' + ((options.fields || [])[0] || 'owner_id');
-    const ownerfield = options.ownerfield || (firstField.split(':')[1] || firstField.split(':')[0]);
+    const ownerfield = options.ownerfield
+        || (firstField.split(':')[1]
+            || firstField.split(':')[0]);
     // Fold scope:'org' into a spec fragment: disable the user-axis field so the
     // role reads/writes across users, while the tenant axis stays enforced.
     function buildGrantSpec(grantSpec, scopeOrg) {
@@ -223,8 +228,8 @@ function Owner(options) {
             }
             if (rolesys && owner) {
                 const role = null != owner[roleP] ? owner[roleP] : defaultRole;
-                const pm = compiledRoles[role] ||
-                    (null != defaultRole ? compiledRoles[defaultRole] : null);
+                const pm = compiledRoles[role]
+                    || (null != defaultRole ? compiledRoles[defaultRole] : null);
                 const canon = '' + ((msg.ent || msg.qent || {}).entity$ || '');
                 const [, ebase, ename] = canon.split('/');
                 const entity = ebase + '/' + ename;
