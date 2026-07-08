@@ -15,8 +15,8 @@ describe('role', () => {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
         roles: {
-          member: { scope: 'own', entities: { 'sys/foo': 'rw' } },
-          admin: { scope: 'all', entities: '*' }
+          member: { scope: 'own', entities: { 'sys/foo': true } },
+          admin: { scope: 'all', entities: true }
         }
       })
       .ready()
@@ -48,8 +48,8 @@ describe('role', () => {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
         roles: {
-          member: { scope: 'own', entities: { 'sys/foo': 'rw' } },
-          admin: { scope: 'all', entities: '*' }
+          member: { scope: 'own', entities: { 'sys/foo': true } },
+          admin: { scope: 'all', entities: true }
         }
       })
       .ready()
@@ -77,7 +77,7 @@ describe('role', () => {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
         roles: {
-          member: { scope: 'own', entities: { 'sys/foo': 'rw' } }
+          member: { scope: 'own', entities: { 'sys/foo': true } }
         }
       })
       .ready()
@@ -106,7 +106,7 @@ describe('role', () => {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
         roles: {
-          member: { scope: 'own', entities: { 'sys/foo': 'r' } }
+          member: { scope: 'own', entities: { 'sys/foo': { read: true } } }
         }
       })
       .ready()
@@ -150,6 +150,76 @@ describe('role', () => {
 
     const seen = await orgowner.entity('sys/foo').load$(foo.id)
     expect(seen).toMatchObject({ id: foo.id, owner_id: 'u0' })
+  })
+
+
+  test('role-no-entities-gets-full-access', async () => {
+    const s0 = await Seneca({ legacy: false })
+      .test()
+      .use('promisify')
+      .use('entity')
+      .use(Plugin, {
+        fields: ['owner_id'],
+        annotate: ['sys:entity'],
+        roles: {
+          member: { scope: 'own' },
+          admin: { scope: 'all' }
+        }
+      })
+      .ready()
+
+    const member = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'u0', role: 'member' } }
+    })
+
+    // No entities declared => rw on any entity, still owner-scoped.
+    const foo = await member.entity('sys/foo').save$({ x: 1 })
+    expect(foo).toMatchObject({ x: 1, owner_id: 'u0' })
+
+    const bar = await member.entity('sys/bar').save$({ y: 2 })
+    expect(bar).toMatchObject({ y: 2, owner_id: 'u0' })
+
+    const readFoo = await member.entity('sys/foo').load$(foo.id)
+    expect(readFoo).toMatchObject({ id: foo.id, owner_id: 'u0' })
+
+    // Still owner-scoped: another member cannot read u0's row.
+    const u1 = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'u1', role: 'member' } }
+    })
+    const notOwned = await u1.entity('sys/foo').load$(foo.id)
+    expect(notOwned).toEqual(null)
+  })
+
+
+  test('entity-listed-without-op-defaults-rw', async () => {
+    const s0 = await Seneca({ legacy: false })
+      .test()
+      .use('promisify')
+      .use('entity')
+      .use(Plugin, {
+        fields: ['owner_id'],
+        annotate: ['sys:entity'],
+        roles: {
+          // boolean flag and array form both => rw
+          member: { scope: 'own', entities: { 'sys/foo': true } },
+          admin: { scope: 'all', entities: ['sys/foo'] }
+        }
+      })
+      .ready()
+
+    const member = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'u0', role: 'member' } }
+    })
+
+    const foo = await member.entity('sys/foo').save$({ x: 1 })
+    expect(foo).toMatchObject({ x: 1, owner_id: 'u0' })
+
+    const read = await member.entity('sys/foo').load$(foo.id)
+    expect(read).toMatchObject({ id: foo.id, owner_id: 'u0' })
+
+    // allowlist still applies: sys/bar undeclared => denied
+    const bar = await member.entity('sys/bar').load$('any-id')
+    expect(bar).toEqual(null)
   })
 
 

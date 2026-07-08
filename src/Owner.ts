@@ -13,18 +13,49 @@ const { Open, Any } = Gubu
 
 
 // Preset used when `roles: true`. Declared junior -> senior.
+// Entities undeclared => full access by convention (see effectiveRoles below).
 const DEFAULT_ROLES = {
-  member: { scope: 'own', entities: '*' },
-  orgowner: { scope: 'all', entities: '*' }
+  member: { scope: 'own' },
+  orgowner: { scope: 'all' }
+}
+
+
+// Normalize a single entity grant into { read, write } booleans.
+// Convention: a listed entity with no explicit operation (true / empty) => rw.
+// Object form is explicit: an absent flag is not granted. `false` denies both.
+function normalizeGrant(v: any) {
+  if (null == v || true === v) return { read: true, write: true }
+  if (false === v) return { read: false, write: false }
+  return { read: !!v.read, write: !!v.write }
+}
+
+
+// Normalize an entity-grant declaration into a
+// { 'base/name': { read, write } } map. Accepts an array of canons (each rw)
+// or a map whose values are booleans or { read, write } flag objects.
+function normalizeEntities(ent: any) {
+  const out: any = {}
+  if (Array.isArray(ent)) {
+    ent.forEach((k: any) => { out['' + k] = { read: true, write: true } })
+  }
+  else {
+    for (const k in ent) {
+      out[k] = normalizeGrant(ent[k])
+    }
+  }
+  return out
 }
 
 
 // Merge two entity-grant maps, keeping the wider permission per entity.
 function mergeGrant(a: any, b: any) {
-  const out = Object.assign({}, a)
+  const out: any = {}
+  for (const k in a) {
+    out[k] = { read: !!a[k].read, write: !!a[k].write }
+  }
   for (const k in b) {
-    const g = '' + (out[k] || '') + (b[k] || '')
-    out[k] = (g.includes('r') ? 'r' : '') + (g.includes('w') ? 'w' : '')
+    const p = out[k] || { read: false, write: false }
+    out[k] = { read: p.read || b[k].read, write: p.write || b[k].write }
   }
   return out
 }
@@ -141,15 +172,18 @@ function Owner(this: any, options: any) {
     let accAll = false
     Object.keys(roles).forEach((name: any) => {
       const r = roles[name] || {}
-      if ('*' === r.entities) {
+      // Convention: entities undeclared (or `true`) => full access. Declaring
+      // any entity opts the role into allowlist mode (unlisted entities denied).
+      const ent = null == r.entities ? true : r.entities
+      if (true === ent) {
         accAll = true
       }
-      else if (r.entities) {
-        acc = mergeGrant(acc, r.entities)
+      else {
+        acc = mergeGrant(acc, normalizeEntities(ent))
       }
       effectiveRoles[name] = {
         scope: r.scope || 'own',
-        entities: accAll ? '*' : Object.assign({}, acc)
+        entities: accAll ? true : Object.assign({}, acc)
       }
     })
   }
@@ -214,14 +248,16 @@ function Owner(this: any, options: any) {
         const [, ebase, ename] = canon.split('/')
         const entity = ebase + '/' + ename
 
-        const grant = policy && '*' === policy.entities ? 'rw' :
-          (policy && policy.entities &&
-            (policy.entities[entity] || policy.entities[ename])) || ''
+        const grant = policy && true === policy.entities ?
+          { read: true, write: true } :
+          ((policy && policy.entities &&
+            (policy.entities[entity] || policy.entities[ename])) ||
+            { read: false, write: false })
 
-        const need = 'load' === msg.cmd || 'list' === msg.cmd ? 'r' : 'w'
+        const needRead = 'load' === msg.cmd || 'list' === msg.cmd
 
-        if (!('' + grant).includes(need)) {
-          explain && (expdata.role_denied = { role, entity, need })
+        if (!(needRead ? grant.read : grant.write)) {
+          explain && (expdata.role_denied = { role, entity, need: needRead ? 'read' : 'write' })
           if ('list' === msg.cmd) {
             return intern.reply(self, reply, [], explain, expdata)
           }
