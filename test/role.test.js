@@ -15,7 +15,7 @@ describe('role', () => {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
         roles: {
-          member: { scope: 'own', entities: { 'sys/foo': true } },
+          member: { scope: 'own', entities: ['sys/foo'] },
           admin: { scope: 'all', entities: true }
         }
       })
@@ -48,7 +48,7 @@ describe('role', () => {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
         roles: {
-          member: { scope: 'own', entities: { 'sys/foo': true } },
+          member: { scope: 'own', entities: ['sys/foo'] },
           admin: { scope: 'all', entities: true }
         }
       })
@@ -77,7 +77,7 @@ describe('role', () => {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
         roles: {
-          member: { scope: 'own', entities: { 'sys/foo': true } }
+          member: { scope: 'own', entities: ['sys/foo'] }
         }
       })
       .ready()
@@ -106,7 +106,7 @@ describe('role', () => {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
         roles: {
-          member: { scope: 'own', entities: { 'sys/foo': { read: true } } }
+          member: { scope: 'own', entities: [{ 'sys/foo': { read: true } }] }
         }
       })
       .ready()
@@ -201,7 +201,7 @@ describe('role', () => {
         annotate: ['sys:entity'],
         roles: {
           // boolean flag and array form both => rw
-          member: { scope: 'own', entities: { 'sys/foo': true } },
+          member: { scope: 'own', entities: ['sys/foo'] },
           admin: { scope: 'all', entities: ['sys/foo'] }
         }
       })
@@ -259,7 +259,7 @@ describe('role', () => {
         annotate: ['sys:entity'],
         defaultRole: null,
         roles: {
-          member: { scope: 'own', entities: { 'sys/foo': true } }
+          member: { scope: 'own', entities: ['sys/foo'] }
         }
       })
       .ready()

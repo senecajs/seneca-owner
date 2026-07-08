@@ -26,9 +26,9 @@ describe('hierarchy', () => {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],
         roles: {
-          member: { scope: 'own', entities: { 'sys/note': true } },
-          lead: { scope: 'all', entities: { 'sys/report': true } },
-          admin: { scope: 'all', entities: { 'sys/setting': true } }
+          member: { scope: 'own', entities: ['sys/note'] },
+          lead: { scope: 'all', entities: ['sys/report'] },
+          admin: { scope: 'all', entities: ['sys/setting'] }
         }
       })
       .ready()
@@ -74,8 +74,8 @@ describe('hierarchy', () => {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],
         roles: {
-          member: { scope: 'own', entities: { 'sys/note': true } },
-          admin: { scope: 'all', entities: { 'sys/report': true } }
+          member: { scope: 'own', entities: ['sys/note'] },
+          admin: { scope: 'all', entities: ['sys/report'] }
         }
       })
       .ready()
@@ -110,8 +110,8 @@ describe('hierarchy', () => {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],
         roles: {
-          member: { scope: 'own', entities: { 'sys/note': true } },
-          admin: { scope: 'all', entities: { 'sys/report': true } }
+          member: { scope: 'own', entities: ['sys/note'] },
+          admin: { scope: 'all', entities: ['sys/report'] }
         }
       })
       .ready()

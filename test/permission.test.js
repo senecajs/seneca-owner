@@ -83,9 +83,9 @@ describe('permission', () => {
         roles: {
           // member declared explicitly to restrict the baseline (read-only doc)
           // instead of the full-access convention default.
-          member: { scope: 'own', entities: { 'sys/doc': { read: true } } },
-          editor: { scope: 'own', entities: { 'sys/doc': true } },
-          admin: { scope: 'all', entities: { 'sys/audit': true } }
+          member: { scope: 'own', entities: [{ 'sys/doc': { read: true } }] },
+          editor: { scope: 'own', entities: ['sys/doc'] },
+          admin: { scope: 'all', entities: ['sys/audit'] }
         }
       })
       .ready()

@@ -36,30 +36,22 @@ function buildRoles(declared: any) {
 }
 
 
-// Normalize a single entity grant into { read, write } booleans.
-// Convention: a listed entity with no explicit operation (true / empty / {}) => rw.
-// Object form is explicit: an absent flag is not granted. `false` denies both.
-function normalizeGrant(v: any) {
-  if (null == v || true === v) return { read: true, write: true }
-  if (false === v) return { read: false, write: false }
-  if ('object' === typeof v && 0 === Object.keys(v).length) return { read: true, write: true }
-  return { read: !!v.read, write: !!v.write }
-}
-
-
-// Normalize an entity-grant declaration into a
-// { 'base/name': { read, write } } map. Accepts an array of canons (each rw)
-// or a map whose values are booleans or { read, write } flag objects.
+// Normalize a declared entity-grant array into a
+// { 'base/name': { read, write } } map. Declared entities are always an array.
+// A string element grants full read+write on that entity; an object element
+// { 'base/name': { read, write } } limits it to the listed operations.
 function normalizeEntities(ent: any) {
   const out: any = {}
-  if (Array.isArray(ent)) {
-    ent.forEach((k: any) => { out['' + k] = { read: true, write: true } })
-  }
-  else {
-    for (const k in ent) {
-      out[k] = normalizeGrant(ent[k])
+  ;(ent || []).forEach((item: any) => {
+    if ('string' === typeof item) {
+      out[item] = { read: true, write: true }
     }
-  }
+    else {
+      for (const k in item) {
+        out[k] = { read: !!item[k].read, write: !!item[k].write }
+      }
+    }
+  })
   return out
 }
 

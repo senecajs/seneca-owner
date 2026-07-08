@@ -100,9 +100,9 @@ describe('convention', () => {
   // default is injected. Distinct grants, org scope and bad actors validated.
   test('all-custom-roles', async () => {
     const s0 = await build({
-      member: { scope: 'own', entities: { 'sys/ticket': true } },
-      support: { scope: 'all', entities: { 'sys/ticket': true } },
-      admin: { scope: 'all', entities: { 'sys/billing': true } }
+      member: { scope: 'own', entities: ['sys/ticket'] },
+      support: { scope: 'all', entities: ['sys/ticket'] },
+      admin: { scope: 'all', entities: ['sys/billing'] }
     })
 
     const mA0 = as(s0, 'u0', 'A', 'member')
