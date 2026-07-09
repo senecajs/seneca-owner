@@ -1,22 +1,26 @@
-# seneca-owner
-[Seneca](http://senecajs.org) plugin providing ownership permissions for entities.
+![Seneca](http://senecajs.org/files/assets/seneca-logo.png)
+> A [Seneca.js](http://senecajs.org) plugin
 
-[![Npm][BadgeNpm]][Npm]
-[![Travis][BadgeTravis]][Travis]
-[![Coveralls][BadgeCoveralls]][Coveralls]
-[![Maintainability](https://api.codeclimate.com/v1/badges/4db939a7299d629c974b/maintainability)](https://codeclimate.com/github/voxgig/seneca-owner/maintainability)
+# @seneca/owner
+
+[![npm version](https://img.shields.io/npm/v/@seneca/owner.svg)](https://npmjs.com/package/@seneca/owner)
+[![build](https://github.com/senecajs/seneca-owner/actions/workflows/build.yml/badge.svg)](https://github.com/senecajs/seneca-owner/actions/workflows/build.yml)
+[![Known Vulnerabilities](https://snyk.io/test/github/senecajs/seneca-owner/badge.svg)](https://snyk.io/test/github/senecajs/seneca-owner)
+[![Coverage Status](https://coveralls.io/repos/voxgig/seneca-owner/badge.svg?branch=master&service=github)](https://coveralls.io/github/voxgig/seneca-owner?branch=master)
 [![DeepScan grade](https://deepscan.io/api/teams/5016/projects/12956/branches/208825/badge/grade.svg)](https://deepscan.io/dashboard#view=project&tid=5016&pid=12956&bid=208825)
-[![dependencies Status](https://david-dm.org/voxgig/seneca-owner/status.svg)](https://david-dm.org/voxgig/seneca-owner)
 
+| ![Voxgig](https://www.voxgig.com/res/img/vgt01r.png) | This open source module is sponsored and supported by [Voxgig](https://www.voxgig.com). |
+|---|---|
 
-This plugin blocks access to entities unless certain fields match
-custom values in the Seneca instance. It also ensures that entities
-are saved with appropriate field values.
+## Install
 
+```sh
+npm install @seneca/owner
+```
 
 ## Quick Example
 
-```
+```js
 require('seneca')
   .test()
   .use('promisify')
@@ -33,7 +37,7 @@ require('seneca')
   .ready(async function() {
 
     // Set custom property to identify user
-    
+
     var alice_instance = this.delegate(null,{custom:{
       'sys-owner': {
         usr: 'alice',
@@ -49,7 +53,7 @@ require('seneca')
     }})
 
     // Save some entities
-    
+
     var save_a1 = await alice_instance.entity('zed/foo').data$({id$:1,a:1}).save$()
     var save_a2 = await bob_instance.entity('zed/foo').data$({id$:2,a:2}).save$()
 
@@ -73,66 +77,62 @@ require('seneca')
   })
 ```
 
-## Usage
+## More Examples
 
-For an example showing groups with custom permissions, see the
-`group-scenario` unit test.
+For an example showing groups with custom permissions, see the `group-scenario` unit test.
 
+## Motivation
 
+Provides ownership permissions for entities in Seneca. Ensures users can only access and modify their own data.
 
-<!--START:options-->
-<!--END:options-->
+## Support
 
-<!--START:action-list-->
+If you're using this module and need help, you can:
 
+- Post a [github issue](https://github.com/senecajs/seneca-owner/issues)
+- Tweet to [@senecajs](http://twitter.com/senecajs)
+- Ask on the [Gitter](https://gitter.im/senecajs/seneca)
 
-## Action Patterns
+## API
+
+### Action Patterns
 
 * [hook:case,sys:owner](#-hookcasesysowner-)
 
+### Action Descriptions
 
-<!--END:action-list-->
-
-<!--START:action-desc-->
-
-
-## Action Descriptions
-
-### &laquo; `hook:case,sys:owner` &raquo;
+#### &laquo; `hook:case,sys:owner` &raquo;
 
 No description provided.
 
-
-
-----------
-
-
-<!--END:action-desc-->
-
-
-
-## Debugging
+### Debugging
 
 Ownership rules can become complex. To debug individual use-cases, in production or otherwise, use the `Seneca.explain` feature.
 
-```
+```js
 var explain_log = []
 await seneca.post('cmd:do-stuff', {explain$: explain_log})
 console.log(explain_log) // A record of message calls and custom debug information.
 ```
 
-The _explain_ functionality is also supported by [seneca-browser](github.com/voxgig/seneca-browser), so you can use it directly in the browser console. You may find it more useful to use the general capture: 
+The _explain_ functionality is also supported by [seneca-browser](https://github.com/voxgig/seneca-browser), so you can use it directly in the browser console. You may find it more useful to use the general capture:
 
-```
+```js
 var explain_log = seneca.explain(true)
-... user interface actions that generate requests
+// ... user interface actions that generate requests
 console.log(explain_log)
 ```
 
+## Contributing
 
-[BadgeCoveralls]: https://coveralls.io/repos/voxgig/seneca-owner/badge.svg?branch=master&service=github
-[BadgeNpm]: https://badge.fury.io/js/seneca-owner.svg
-[BadgeTravis]: https://travis-ci.org/voxgig/seneca-owner.svg?branch=master
-[Coveralls]: https://coveralls.io/github/voxgig/seneca-owner?branch=master
-[Npm]: https://www.npmjs.com/package/seneca-owner
-[Travis]: https://travis-ci.org/voxgig/seneca-owner?branch=master
+The [Senecajs org](https://github.com/senecajs/) encourages open participation. If you feel you can help in any way, be it with documentation, examples, extra testing, or new features please get in touch.
+
+### Running tests
+
+```sh
+npm run test
+```
+
+## Background
+
+Works with [seneca-entity](https://github.com/senecajs/seneca-entity) to enforce data ownership.
