@@ -6,14 +6,14 @@ const Plugin = require('..')
 
 // A single owner instance scopes by BOTH owner_id and org_id: list `fields`
 // with the owner field first (the per-user axis) and the org field after (the
-// tenant axis). Roles are declared junior -> senior; a senior role inherits
-// every junior role's entity grants. an org role stops enforcing the owner
-// field (reads across users) but the org field still applies, so a role never
-// leaves its tenant.
+// tenant axis). Roles inherit via explicit `inherits` edges (a DAG): a role's
+// effective grants are the union of every role it inherits plus its own. An org
+// role stops enforcing the owner field (reads across users) but the org field
+// still applies, so a role never leaves its tenant.
 //
 //   member -> own rows,  sys/note
-//   lead   -> whole org, sys/report (+ inherited sys/note)
-//   admin  -> whole org, sys/setting (+ inherited sys/report, sys/note)
+//   lead   -> whole org, sys/report  (inherits member: + sys/note)
+//   admin  -> whole org, sys/setting (inherits lead:   + sys/report, sys/note)
 
 describe('hierarchy', () => {
 
@@ -28,8 +28,8 @@ describe('hierarchy', () => {
         rolesys: true,
         roles: {
           member: { grants: [{ entity: 'sys/note' }] },
-          lead: { scope: 'org', grants: [{ entity: 'sys/report' }] },
-          admin: { scope: 'org', grants: [{ entity: 'sys/setting' }] }
+          lead: { scope: 'org', inherits: ['member'], grants: [{ entity: 'sys/report' }] },
+          admin: { scope: 'org', inherits: ['lead'], grants: [{ entity: 'sys/setting' }] }
         }
       })
       .ready()

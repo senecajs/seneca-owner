@@ -6,6 +6,7 @@
 import { Gubu } from 'gubu'
 
 import { refine_query } from './refine_query'
+import { build_roles } from './build_roles'
 
 /* $lab:coverage:on$ */
 
@@ -16,6 +17,10 @@ const { Open, Any } = Gubu
 // fragment). member: own rows on any entity. admin: whole tenant, any entity.
 // scope:'org' widens the user axis (first field) only; other fields, including
 // the tenant axis, always stay enforced so a role never leaves its tenant.
+//
+// Roles inherit via an explicit DAG (build_roles): a role's effective grants
+// are the union of every role it `inherits` plus its own. Any role without an
+// explicit `inherits` inherits `member`, so member is the baseline for all.
 const defaults_roles = {
   member: { grants: [{ entity: '*' }] },
   admin: { scope: 'org', grants: [{ entity: '*' }] }
@@ -89,73 +94,6 @@ function Owner(this: any, options: any) {
   // intern.default_spec = intern.make_spec(options.default_spec)
   const default_spec = intern.make_spec(options.default_spec, {})
 
-  // Order roles member -> middles -> admin so hierarchy inheritance is stable.
-  function buildRoles() {
-    const merged = Object.assign({}, defaults_roles, options.roles)
-
-    const middleRoles = Object.keys(merged)
-      .filter((name) => 'member' !== name && 'admin' !== name)
-
-    const ordered: any = { member: merged.member }
-    middleRoles.forEach((name) => { ordered[name] = merged[name] })
-    ordered.admin = merged.admin
-
-    return ordered
-  }
-
-  // A grant is a string entity pattern or { entity, ops?, spec? }. Normalize to
-  // { entity, ops:Set<cmd>, spec }. ops use seneca method names (list$ ...) so
-  // the config speaks the ORM's language; strip the $ to match msg.cmd.
-  function normalizeGrant(grant: any) {
-    if ('string' === typeof grant) {
-      grant = { entity: grant }
-    }
-
-    const allOps = ['list$', 'load$', 'save$', 'remove$']
-
-    const ops = new Set(
-      (grant.ops || allOps).map((op: string) => ('' + op).replace(/\$$/, ''))
-    )
-
-    return { entity: '' + grant.entity, ops, spec: grant.spec || {} }
-  }
-
-  // Deep-merge two grant lists into a superset keyed by entity: ops union,
-  // later (senior) spec fragment wins. Used for hierarchy inheritance.
-  function mergeGrantLists(base: any[], add: any[]) {
-    const byEntity: any = {}
-
-    base.concat(add).forEach((grant: any) => {
-      const prev = byEntity[grant.entity]
-
-      if (!prev) {
-        byEntity[grant.entity] = {
-          entity: grant.entity,
-          ops: new Set(grant.ops),
-          spec: deep({}, grant.spec)
-        }
-      }
-
-      else {
-        grant.ops.forEach((op: any) => prev.ops.add(op))
-        prev.spec = deep(prev.spec, grant.spec)
-      }
-    })
-
-    return Object.values(byEntity)
-  }
-
-  // Entity pattern -> Patrun match key. '*' any, 'base/*' whole base, else exact.
-  function entityPat(entity: string) {
-    if ('*' === entity) {
-      return {}
-    }
-
-    const [base, name] = entity.split('/')
-    return (null == name || '*' === name) ? { base } : { base, name }
-  }
-
-
   const casemap: any = {}
 
   this.fix('sys:owner').add('hook:case', hook_case)
@@ -194,61 +132,20 @@ function Owner(this: any, options: any) {
     || (firstField.split(':')[1]
       || firstField.split(':')[0])
 
-  // Fold scope:'org' into a spec fragment: disable the user-axis field so the
-  // role reads/writes across users, while the tenant axis stays enforced.
-  function buildGrantSpec(grantSpec: any, scopeOrg: boolean) {
-    const spec = deep({}, grantSpec)
-
-    if (!scopeOrg) {
-      return spec
-    }
-
-    spec.read = spec.read || {}
-    spec.write = spec.write || {}
-
-    for (const field of (options.fields || [])) {
-      const parts = ('' + field).split(':')
-      const entityField = null == parts[1] ? parts[0] : parts[1]
-
-      if (entityField === ownerfield) {
-        spec.read[field] = false
-        spec.write[field] = false
-      }
-    }
-
-    return spec
-  }
-
-  // Compile each role to a Patrun of entity-pattern -> { ops, spec }. Roles run
-  // junior -> senior; a senior deep-merges every junior grant (superset), then
-  // its own, so a senior can never have less access than a junior below it.
-  function compileRoles() {
-    const orderedRoles = buildRoles()
-    const compiled: any = {}
-    let inherited: any[] = []
-
-    Object.keys(orderedRoles).forEach((name: any) => {
-      const role = orderedRoles[name] || {}
-      const scopeOrg = 'org' === role.scope
-      const ownGrants = (role.grants || []).map(normalizeGrant)
-
-      inherited = mergeGrantLists(inherited, ownGrants)
-
-      const patrun = seneca.util.Patrun()
-      inherited.forEach((grant: any) => {
-        patrun.add(
-          entityPat(grant.entity),
-          { ops: grant.ops, spec: buildGrantSpec(grant.spec, scopeOrg) }
-        )
-      })
-
-      compiled[name] = patrun
-    })
-
-    return compiled
-  }
-
-  const compiledRoles = rolesys ? compileRoles() : {}
+  // Compile the role hierarchy (a DAG of inherit edges) to a per-role Patrun of
+  // entity-pattern -> { ops, spec }. Caller roles merge over the defaults, then
+  // build_roles resolves each role's effective grants as the transitive closure
+  // of its inherited roles plus its own. See src/build_roles.ts.
+  const compiledRoles = rolesys
+    ? build_roles(
+      {
+        roles: Object.assign({}, defaults_roles, options.roles),
+        fields: options.fields,
+        ownerfield
+      },
+      { deep, Patrun: seneca.util.Patrun, error: seneca.error.bind(seneca) }
+    )
+    : {}
 
   const include = options.include
   const hasInclude = 0 < Object.keys(include).length

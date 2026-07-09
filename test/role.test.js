@@ -15,9 +15,10 @@ describe('role', () => {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
         rolesys: true,
+        // admin comes from the default preset; only the custom member role
+        // needs declaring here.
         roles: {
-          member: { grants: [{ entity: 'sys/foo' }] },
-          admin: { scope: 'org', grants: [{ entity: '*' }] }
+          member: { grants: [{ entity: 'sys/foo' }] }
         }
       })
       .ready()
@@ -49,9 +50,9 @@ describe('role', () => {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
         rolesys: true,
+        // admin (org-scoped, all entities) is the default preset: not declared.
         roles: {
-          member: { grants: [{ entity: 'sys/foo' }] },
-          admin: { scope: 'org', grants: [{ entity: '*' }] }
+          member: { grants: [{ entity: 'sys/foo' }] }
         }
       })
       .ready()
@@ -242,8 +243,7 @@ describe('role', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
-          member: { grants: [{ entity: '*' }] },
-          admin: { scope: 'org', grants: [{ entity: '*' }] }
+          member: { grants: [{ entity: '*' }] }
         }
       })
       .ready()
