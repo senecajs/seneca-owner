@@ -205,7 +205,16 @@ function Owner(this: any, options: any) {
           || (null != defaultRole ? compiledRoles[defaultRole] : null)
 
         const targetEnt = msg.ent || msg.qent
-        const { base, name } = targetEnt ? targetEnt.canon$({ object: true }) : {}
+
+        // No entity to match a grant against -> fail safe and deny. Without
+        // this, Patrun.find would drop the undefined base/name keys and match
+        // the '*' grant, silently granting access on entity-less messages.
+        if (null == targetEnt) {
+          explain && (expdata.role_denied = { role, entity: null, cmd: msg.cmd })
+          return intern.deny(self, reply, msg, role, null, explain, expdata)
+        }
+
+        const { base, name } = targetEnt.canon$({ object: true })
         const entity = base + '/' + name
 
         // No matching grant, or grant lacks this op -> deny.

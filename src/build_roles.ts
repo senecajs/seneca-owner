@@ -185,6 +185,10 @@ export function build_roles(
 
   Object.keys(roles).forEach((name: string) => {
     const role = roles[name] || {}
+
+    // scope is role-level, not grant-level: scopeOrg here applies to ALL of
+    // this role's effective grants (inherited + own). A single role cannot be
+    // org-scoped for some entities but owner-scoped for others.
     const scopeOrg = 'org' === role.scope
 
     const grants = effectiveGrants(deep, error, roles, memo, colour, name)
