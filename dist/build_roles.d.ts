@@ -1,22 +1,22 @@
-export type Grant = {
+type Grant = {
     entity: string;
     ops?: string[];
     spec?: any;
 };
-export type Role = {
+type Role = {
     scope?: string;
     inherits?: any;
     grants?: Grant[];
 };
-export type Roles = {
+type Roles = {
     [name: string]: Role;
 };
-export type BuildRolesOpts = {
+type BuildRolesOpts = {
     roles: Roles;
     fields: string[];
     ownerfield: string;
 };
-export type BuildRolesDeps = {
+type BuildRolesDeps = {
     deep: (...args: any[]) => any;
     Patrun: () => any;
     error: (code: string, details?: any) => Error;
@@ -24,3 +24,4 @@ export type BuildRolesDeps = {
 export declare function build_roles(opts: BuildRolesOpts, deps: BuildRolesDeps): {
     [name: string]: any;
 };
+export {};

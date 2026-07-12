@@ -1,34 +1,29 @@
-/* Copyright (c) 2018-2020 Voxgig and other contributors, MIT License */
+/* Copyright (c) 2018-2026 Voxgig and other contributors, MIT License */
 
 // Compile the role option into a map of role-name -> Patrun of
-// entity-pattern -> { ops, spec }. Roles form a hierarchy expressed as an
-// explicit DAG: each role may `inherit` other roles, and its effective grants
-// are the union (transitive closure) of every inherited role plus its own.
-// Unless a role declares `inherits`, it inherits `member`, so every role has
-// the member baseline by default. `member` is the root and inherits nothing.
+// entity-pattern -> { ops, spec }. Roles form a DAG: each role may `inherit`
+// others, and its effective permissions are the transitive union of every
+// inherited role plus its own. Roles inherit `member` by default; `member` is
+// the root and inherits nothing.
 
-export type Grant = { entity: string; ops?: string[]; spec?: any }
-export type Role = { scope?: string; inherits?: any; grants?: Grant[] }
-export type Roles = { [name: string]: Role }
+type Grant = { entity: string; ops?: string[]; spec?: any }
+type Role = { scope?: string; inherits?: any; grants?: Grant[] }
+type Roles = { [name: string]: Role }
 
-export type BuildRolesOpts = {
+type BuildRolesOpts = {
   roles: Roles
   fields: string[]
   ownerfield: string
 }
 
-export type BuildRolesDeps = {
-  // seneca.util.deepextend: deep-clone/merge helper
+type BuildRolesDeps = {
   deep: (...args: any[]) => any
-  // seneca.util.Patrun: pattern matcher constructor
   Patrun: () => any
-  // seneca.error: build a coded Error for fail-fast init errors
   error: (code: string, details?: any) => Error
 }
 
-// A grant is a string entity pattern or { entity, ops?, spec? }. Normalize to
-// { entity, ops:Set<cmd>, spec }. ops use seneca method names (list$ ...) so
-// the config speaks the ORM's language; strip the $ to match msg.cmd.
+// A grant is a string entity pattern or { entity, ops?, spec? }. ops use seneca
+// method names (list$ ...); strip the $ to match msg.cmd.
 function normalizeGrant(grant: any) {
   if ('string' === typeof grant) {
     grant = { entity: grant }
@@ -43,27 +38,26 @@ function normalizeGrant(grant: any) {
   return { entity: '' + grant.entity, ops, spec: grant.spec || {} }
 }
 
-// Deep-merge two grant lists into a superset keyed by entity: ops union, later
-// spec fragment wins. `add` is applied over `base`, so callers pass the more
-// senior list last (own grants after inherited ones). Returns fresh grant
-// objects, so a memoized result can be safely reused by several callers.
-function mergeGrantLists(deep: any, base: any[], add: any[]) {
+// Merge two permission lists into a superset keyed by entity: ops union, later
+// spec wins. `add` is applied over `base`, so callers pass the more senior list
+// last. Returns fresh objects so a memoized result stays safe to reuse.
+function mergePermissions(deep: any, base: any[], add: any[]) {
   const byEntity: any = {}
 
-  base.concat(add).forEach((grant: any) => {
-    const prev = byEntity[grant.entity]
+  base.concat(add).forEach((perm: any) => {
+    const prev = byEntity[perm.entity]
 
     if (!prev) {
-      byEntity[grant.entity] = {
-        entity: grant.entity,
-        ops: new Set(grant.ops),
-        spec: deep({}, grant.spec)
+      byEntity[perm.entity] = {
+        entity: perm.entity,
+        ops: new Set(perm.ops),
+        spec: deep({}, perm.spec)
       }
     }
 
     else {
-      grant.ops.forEach((op: any) => prev.ops.add(op))
-      prev.spec = deep(prev.spec, grant.spec)
+      perm.ops.forEach((op: any) => prev.ops.add(op))
+      prev.spec = deep(prev.spec, perm.spec)
     }
   })
 
@@ -80,7 +74,7 @@ function entityPat(entity: string) {
   return (null == name || '*' === name) ? { base } : { base, name }
 }
 
-// Fold scope:'org' into a spec fragment: disable the user-axis field so the
+// Fold scope:'org' into a spec fragment: disable the owner-axis field so the
 // role reads/writes across users, while the tenant axis stays enforced.
 function buildGrantSpec(deep: any, opts: BuildRolesOpts, grantSpec: any, scopeOrg: boolean) {
   const spec = deep({}, grantSpec)
@@ -105,9 +99,8 @@ function buildGrantSpec(deep: any, opts: BuildRolesOpts, grantSpec: any, scopeOr
   return spec
 }
 
-// Resolve a role's inherit edges. Default: inherit `member` so every role has
-// the member baseline. `member` is the root (inherits nothing). Explicit
-// `inherits: []` / 'none' / null opts out; a string or array names parents.
+// Resolve a role's inherit edges. Default: inherit `member`. `member` is the
+// root. Explicit `inherits: []` / 'none' / null opts out.
 function resolveInherits(name: string, role: Role) {
   if ('member' === name) {
     return []
@@ -126,25 +119,22 @@ function resolveInherits(name: string, role: Role) {
   return Array.isArray(inh) ? inh : [inh]
 }
 
-// Effective grants = transitive closure over inherit edges. Memoized DFS with
-// three-colour marking: WHITE unvisited, GREY on the active stack (a re-entry
-// is a cycle), BLACK done. Parents merged first, own grants last so the role's
-// own spec fragments win on conflict.
-const WHITE = 0, GREY = 1, BLACK = 2
-
-function effectiveGrants(
+// Effective permissions = transitive closure over inherit edges. Memoized DFS:
+// `visiting` holds the roles on the current stack, so re-entering one is a
+// cycle. Parents merge first, own grants last, so a role's own spec wins.
+function effectivePermissions(
   deep: any,
   error: BuildRolesDeps['error'],
   roles: Roles,
   memo: any,
-  colour: any,
+  visiting: Set<string>,
   name: string
 ): any[] {
-  if (BLACK === colour[name]) {
+  if (name in memo) {
     return memo[name]
   }
 
-  if (GREY === colour[name]) {
+  if (visiting.has(name)) {
     throw error('role-inherit-cycle', { role: name })
   }
 
@@ -152,23 +142,23 @@ function effectiveGrants(
     throw error('role-inherit-unknown', { role: name })
   }
 
-  colour[name] = GREY
+  visiting.add(name)
 
-  const role = roles[name] || {}
+  const role = roles[name]
+  let permissions: any[] = []
 
-  let grants: any[] = []
   for (const parent of resolveInherits(name, role)) {
-    grants = mergeGrantLists(
-      deep, grants,
-      effectiveGrants(deep, error, roles, memo, colour, parent)
+    permissions = mergePermissions(
+      deep, permissions,
+      effectivePermissions(deep, error, roles, memo, visiting, parent)
     )
   }
 
   const own = (role.grants || []).map(normalizeGrant)
-  grants = mergeGrantLists(deep, grants, own)
+  permissions = mergePermissions(deep, permissions, own)
 
-  colour[name] = BLACK
-  return (memo[name] = grants)
+  visiting.delete(name)
+  return (memo[name] = permissions)
 }
 
 export function build_roles(
@@ -179,25 +169,24 @@ export function build_roles(
   const roles = opts.roles || {}
 
   const memo: any = {}
-  const colour: any = {}
+  const visiting = new Set<string>()
 
   const compiled: any = {}
 
   Object.keys(roles).forEach((name: string) => {
     const role = roles[name] || {}
 
-    // scope is role-level, not grant-level: scopeOrg here applies to ALL of
-    // this role's effective grants (inherited + own). A single role cannot be
-    // org-scoped for some entities but owner-scoped for others.
+    // scope is role-level: scopeOrg applies to ALL of this role's effective
+    // permissions (inherited + own).
     const scopeOrg = 'org' === role.scope
 
-    const grants = effectiveGrants(deep, error, roles, memo, colour, name)
+    const permissions = effectivePermissions(deep, error, roles, memo, visiting, name)
 
     const patrun = Patrun()
-    grants.forEach((grant: any) => {
+    permissions.forEach((perm: any) => {
       patrun.add(
-        entityPat(grant.entity),
-        { ops: grant.ops, spec: buildGrantSpec(deep, opts, grant.spec, scopeOrg) }
+        entityPat(perm.entity),
+        { ops: perm.ops, spec: buildGrantSpec(deep, opts, perm.spec, scopeOrg) }
       )
     })
 
