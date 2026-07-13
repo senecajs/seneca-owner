@@ -7,6 +7,8 @@
 type Grant = { entity: string; ops?: string[]; spec?: any }
 type Role = { scope?: string; inherits?: any; grants?: Grant[] }
 type Roles = { [name: string]: Role }
+type Permission = { entity: string; ops: Set<string>; spec: any }
+type Memo = { [name: string]: Permission[] }
 
 type BuildRolesOpts = {
   roles: Roles
@@ -20,7 +22,7 @@ type BuildRolesDeps = {
   error: (code: string, details?: any) => Error
 }
 
-function normalizeGrant(grant: any) {
+function normalizeGrant(grant: any): Permission {
   if ('string' === typeof grant) {
     grant = { entity: grant }
   }
@@ -28,7 +30,7 @@ function normalizeGrant(grant: any) {
   const allOps = ['list$', 'load$', 'save$', 'remove$']
 
   // ops are seneca method names; strip the $ to match msg.cmd.
-  const ops = new Set(
+  const ops = new Set<string>(
     (grant.ops || allOps).map((op: string) => ('' + op).replace(/\$$/, ''))
   )
 
@@ -36,7 +38,7 @@ function normalizeGrant(grant: any) {
 }
 
 // Union two permission lists keyed by entity: ops union, later spec wins.
-function mergePermissions(deep: any, base: any[], add: any[]) {
+function mergePermissions(deep: any, base: Permission[], add: Permission[]): Permission[] {
   const byEntity: any = {}
 
   base.concat(add).forEach((perm: any) => {
@@ -134,10 +136,10 @@ function effectivePermissions(
   deep: any,
   error: BuildRolesDeps['error'],
   roles: Roles,
-  memo: any,
+  memo: Memo,
   visiting: Set<string>,
   name: string
-): any[] {
+): Permission[] {
   if (name in memo) {
     return memo[name]
   }
@@ -153,7 +155,7 @@ function effectivePermissions(
   visiting.add(name)
 
   const role = roles[name]
-  let permissions: any[] = []
+  let permissions: Permission[] = []
 
   for (const parent of resolveInherits(name, role, roles)) {
     permissions = mergePermissions(
@@ -176,7 +178,7 @@ export function build_roles(
   const { deep, Patrun, error } = deps
   const roles = opts.roles || {}
 
-  const memo: any = {}
+  const memo: Memo = {}
   const visiting = new Set<string>()
 
   const compiled: any = {}
