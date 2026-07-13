@@ -1,15 +1,12 @@
-/* Copyright (c) 2018-2023 voxgig and other contributors, MIT License */
+/* Copyright (c) 2018-2026 voxgig and other contributors, MIT License */
 'use strict'
 
 const Seneca = require('seneca')
 const Plugin = require('..')
 
-// A single owner instance scopes by BOTH owner_id and org_id: list `fields`
-// with the owner field first (the per-user axis) and the org field after (the
-// tenant axis). Roles inherit via explicit `inherits` edges (a DAG): a role's
-// effective grants are the union of every role it inherits plus its own. An org
-// role stops enforcing the owner field (reads across users) but the org field
-// still applies, so a role never leaves its tenant.
+// Roles inherit via explicit `inherits` edges (a DAG): a role's effective
+// grants are the union of every role it inherits plus its own. An org-scoped
+// role stops enforcing the owner field but still keeps the tenant field.
 //
 //   member -> own rows,  sys/note
 //   lead   -> whole org, sys/report  (inherits member: + sys/note)

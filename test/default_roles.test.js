@@ -4,10 +4,9 @@
 const Seneca = require('seneca')
 const Plugin = require('..')
 
-// rolesys:true with NO roles declared falls back to the built-in presets
-// (Owner.ts:24-27): member = own rows on any entity, admin = whole tenant on any
-// entity. Both are always bounded by the tenant axis (org_id) — a role never
-// leaves its tenant. This locks that default so it can't silently regress.
+// rolesys:true with NO roles declared falls back to the built-in presets:
+// member = own rows on any entity, admin = whole tenant on any entity. Both
+// stay bounded by the tenant axis (org_id) — a role never leaves its tenant.
 
 describe('default-roles', () => {
 

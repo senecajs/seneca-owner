@@ -5,9 +5,8 @@ const Seneca = require('seneca')
 const Plugin = require('..')
 
 // The tenant axis is not hardcoded to `org_id`: it is any field declared after
-// the first in `fields`. Here the tenant key is `tenant_id`. Ownership and role
-// scoping must behave exactly as with `org_id` — the plugin reads the axis names
-// from `fields`, never from a literal.
+// the first in `fields`. Here the tenant key is `tenant_id`, and scoping must
+// behave exactly as with `org_id`.
 
 describe('tenant-key', () => {
 

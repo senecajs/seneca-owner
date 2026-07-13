@@ -1,14 +1,11 @@
-/* Copyright (c) 2018-2023 voxgig and other contributors, MIT License */
+/* Copyright (c) 2018-2026 voxgig and other contributors, MIT License */
 'use strict'
 
 const Seneca = require('seneca')
 const Plugin = require('..')
 
-// Convention over configuration for the role set itself. With no roles
-// declared, member (own rows) and admin (whole tenant) apply. Declaring any
-// roles replaces the presets entirely: no member/admin is injected, so the
-// caller's set is exactly what is enforced. Scenarios span tenants A, B, C to
-// prove the org scope holds.
+// Declaring roles replaces the presets entirely: no member/admin is injected,
+// so the caller's set is exactly what is enforced.
 
 const build = (roles) =>
   Seneca({ legacy: false })
@@ -27,42 +24,6 @@ const as = (s0, owner_id, org_id, role) =>
   s0.delegate(null, { custom: { sysowner: { owner_id, org_id, role } } })
 
 describe('convention', () => {
-
-  // No role declared: rely entirely on the built-in member/admin defaults.
-  test('default-member-and-admin-roles', async () => {
-    const s0 = await build()
-
-    const mA0 = as(s0, 'u0', 'A', 'member')
-    const mA1 = as(s0, 'u1', 'A', 'member')
-    const mB0 = as(s0, 'v0', 'B', 'member')
-    const mC0 = as(s0, 'w0', 'C', 'member')
-    const oA = as(s0, 'o0', 'A', 'admin')
-    const oB = as(s0, 'p0', 'B', 'admin')
-
-    const nA = await mA0.entity('sys/note').save$({ x: 1 })
-    const nB = await mB0.entity('sys/note').save$({ x: 2 })
-    const nC = await mC0.entity('sys/note').save$({ x: 3 })
-    expect(nA).toMatchObject({ owner_id: 'u0', org_id: 'A' })
-
-    // member reads its own row; admin reads across owners in the same org.
-    expect(await mA0.entity('sys/note').load$(nA.id)).toMatchObject({ id: nA.id })
-    expect(await oA.entity('sys/note').load$(nA.id))
-      .toMatchObject({ id: nA.id, owner_id: 'u0' })
-
-    // denials: other member (same org), other org's member, other org's admin.
-    expect(await mA1.entity('sys/note').load$(nA.id)).toEqual(null)
-    expect(await mB0.entity('sys/note').load$(nA.id)).toEqual(null)
-    expect(await mC0.entity('sys/note').load$(nA.id)).toEqual(null)
-    expect(await oB.entity('sys/note').load$(nA.id)).toEqual(null)
-
-    // lists stay within the caller's org / ownership.
-    const listOA = await oA.entity('sys/note').list$()
-    expect(listOA.every((r) => r.org_id === 'A')).toBe(true)
-    expect(listOA.find((r) => r.id === nB.id || r.id === nC.id)).toBeUndefined()
-    expect((await mA1.entity('sys/note').list$()).find((r) => r.id === nA.id))
-      .toBeUndefined()
-  })
-
 
   // Declaring roles replaces the presets: no hidden member/admin is injected,
   // so undeclared roles get nothing.

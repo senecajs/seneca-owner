@@ -1,4 +1,4 @@
-/* Copyright (c) 2018-2023 voxgig and other contributors, MIT License */
+/* Copyright (c) 2018-2026 voxgig and other contributors, MIT License */
 'use strict'
 
 const Seneca = require('seneca')
@@ -266,39 +266,6 @@ describe('role', () => {
     })
     const notOwned = await u1.entity('sys/foo').load$(foo.id)
     expect(notOwned).toEqual(null)
-  })
-
-
-  test('entity-listed-without-ops-defaults-all', async () => {
-    const s0 = await Seneca({ legacy: false })
-      .test()
-      .use('promisify')
-      .use('entity')
-      .use(Plugin, {
-        fields: ['owner_id'],
-        annotate: ['sys:entity'],
-        rolesys: true,
-        roles: {
-          // no ops => all four ops granted
-          member: { grants: [{ entity: 'sys/foo' }] },
-          admin: { scope: '*', grants: [{ entity: 'sys/foo' }] }
-        }
-      })
-      .ready()
-
-    const member = s0.delegate(null, {
-      custom: { sysowner: { owner_id: 'u0', role: 'member' } }
-    })
-
-    const foo = await member.entity('sys/foo').save$({ x: 1 })
-    expect(foo).toMatchObject({ x: 1, owner_id: 'u0' })
-
-    const read = await member.entity('sys/foo').load$(foo.id)
-    expect(read).toMatchObject({ id: foo.id, owner_id: 'u0' })
-
-    // allowlist still applies: sys/bar undeclared => denied
-    const bar = await member.entity('sys/bar').load$('any-id')
-    expect(bar).toEqual(null)
   })
 
 

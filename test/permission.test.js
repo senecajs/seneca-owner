@@ -1,13 +1,8 @@
-/* Copyright (c) 2018-2023 voxgig and other contributors, MIT License */
+/* Copyright (c) 2018-2026 voxgig and other contributors, MIT License */
 'use strict'
 
 const Seneca = require('seneca')
 const Plugin = require('..')
-
-// Focused permission scenarios on top of the role layer:
-//   1. Permissive convention (no entities declared) still isolates by owner/org.
-//   2. Several roles with distinct grants; a bad actor never reaches an entity
-//      it was not granted, regardless of the operation.
 
 describe('permission', () => {
 

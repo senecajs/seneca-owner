@@ -1,13 +1,11 @@
-/* Copyright (c) 2020 voxgig and other contributors, MIT License */
+/* Copyright (c) 2018-2026 voxgig and other contributors, MIT License */
 'use strict'
 
 const Seneca = require('seneca')
 
 const build_roles = require('../dist/build_roles').build_roles
 
-// A real seneca instance supplies the injected deps (deepextend, Patrun,
-// error), so the module is exercised exactly as Owner.ts wires it, but without
-// booting the full plugin / entity stack.
+// Exercise build_roles with the real seneca deps, no full plugin/entity stack.
 const s0 = Seneca({ legacy: false }).test()
 
 const deps = {
