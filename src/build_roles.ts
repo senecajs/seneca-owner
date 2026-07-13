@@ -9,6 +9,8 @@ type Role = { scope?: string; inherits?: any; grants?: Grant[] }
 type Roles = { [name: string]: Role }
 type Permission = { entity: string; ops: Set<string>; spec: any }
 type Memo = { [name: string]: Permission[] }
+type RolePatrun = { find: (pat: { base?: string; name?: string }) => { ops: Set<string>; spec: any } | null }
+type CompiledRoles = { [name: string]: RolePatrun }
 
 type BuildRolesOptions = {
   roles: Roles
@@ -174,14 +176,14 @@ function effectivePermissions(
 export function build_roles(
   options: BuildRolesOptions,
   utils: BuildRolesUtils
-): { [name: string]: any } {
+): CompiledRoles {
   const { deep, Patrun, error } = utils
   const roles = options.roles || {}
 
   const memo: Memo = {}
   const visiting = new Set<string>()
 
-  const compiled: any = {}
+  const compiled: CompiledRoles = {}
 
   Object.keys(roles).forEach((name: string) => {
     const role = roles[name] || {}
