@@ -12,15 +12,9 @@ import { build_roles } from './build_roles'
 
 const { Open, Any } = Gubu
 
-// Default role presets; caller roles merge over these (caller wins per role).
-// A role is a set of grants: entity-pattern -> allowed ops (+ optional spec
-// fragment). member: own rows on any entity. admin: whole tenant, any entity.
-// scope:'org' widens the user axis (first field) only; other fields, including
-// the tenant axis, always stay enforced so a role never leaves its tenant.
-//
-// Roles inherit via an explicit DAG (build_roles): a role's effective grants
-// are the union of every role it `inherits` plus its own. Any role without an
-// explicit `inherits` inherits `member`, so member is the baseline for all.
+// Built-in role presets; caller roles merge over these (caller wins). member:
+// own rows on any entity. admin (scope:'org'): whole tenant. The tenant axis
+// stays enforced for every role, so a role never leaves its tenant.
 const defaults_roles = {
   member: { grants: [{ entity: '*' }] },
   admin: { scope: 'org', grants: [{ entity: '*' }] }
@@ -132,10 +126,8 @@ function Owner(this: any, options: any) {
     || (firstField.split(':')[1]
       || firstField.split(':')[0])
 
-  // Compile the role hierarchy (a DAG of inherit edges) to a per-role Patrun of
-  // entity-pattern -> { ops, spec }. Caller roles merge over the defaults, then
-  // build_roles resolves each role's effective grants as the transitive closure
-  // of its inherited roles plus its own. See src/build_roles.ts.
+  // Compile roles (a DAG of inherit edges) to a per-role Patrun of
+  // entity-pattern -> { ops, spec }. See src/build_roles.ts.
   const compiledRoles = rolesys
     ? build_roles(
       {
@@ -206,9 +198,8 @@ function Owner(this: any, options: any) {
 
         const targetEnt = msg.ent || msg.qent
 
-        // No entity to match a grant against -> fail safe and deny. Without
-        // this, Patrun.find would drop the undefined base/name keys and match
-        // the '*' grant, silently granting access on entity-less messages.
+        // No entity to match against -> deny. Otherwise Patrun.find drops the
+        // undefined keys and matches the '*' grant on entity-less messages.
         if (null == targetEnt) {
           explain && (expdata.role_denied = { role, entity: null, cmd: msg.cmd })
           return intern.deny(self, reply, msg, role, null, explain, expdata)
@@ -225,9 +216,8 @@ function Owner(this: any, options: any) {
           return intern.deny(self, reply, msg, role, entity, explain, expdata)
         }
 
-        // Hand the role's spec fragment off to the one enforcement engine.
-        // make_spec re-unions fields from the read/write maps, so a grant that
-        // names extra fields never drops the base owner/tenant fields.
+        // make_spec re-unions the grant's fields, so extra grant fields never
+        // drop the base owner/tenant fields.
         spec = intern.make_spec(grant.spec, spec)
       }
 
