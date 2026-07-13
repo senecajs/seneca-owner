@@ -87,7 +87,7 @@ describe('permission', () => {
           // instead of the full-access convention default.
           member: { grants: [{ entity: 'sys/doc', ops: ['list$', 'load$'] }] },
           editor: { grants: [{ entity: 'sys/doc' }] },
-          admin: { scope: 'org', grants: [{ entity: 'sys/audit' }] }
+          admin: { scope: 'org_id', grants: [{ entity: 'sys/audit' }] }
         }
       })
       .ready()

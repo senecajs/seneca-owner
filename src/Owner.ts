@@ -12,12 +12,13 @@ import { build_roles } from './build_roles'
 
 const { Open, Any } = Gubu
 
-// Built-in role presets; caller roles merge over these (caller wins). member:
-// own rows on any entity. admin (scope:'org'): whole tenant. The tenant axis
-// stays enforced for every role, so a role never leaves its tenant.
-const defaults_roles = {
-  member: { grants: [{ entity: '*' }] },
-  admin: { scope: 'org', grants: [{ entity: '*' }] }
+// Presets used only when the caller declares no `roles`. admin scopes to the
+// tenant axis, or global ('*') when none is declared.
+function default_roles(tenantAxis: string | undefined) {
+  return {
+    member: { grants: [{ entity: '*' }] },
+    admin: { scope: tenantAxis || '*', grants: [{ entity: '*' }] }
+  }
 }
 
 
@@ -59,7 +60,7 @@ const defaults = {
   defaultRole: Any(),
   ownerfield: Any(),
   rolesys: false,
-  roles: Any(defaults_roles),
+  roles: Any(),
   entprop: 'ent',
   queryprop: 'q',
   annotate: [],
@@ -118,20 +119,34 @@ function Owner(this: any, options: any) {
   // rolesys gates all role enforcement; false -> plain ownership only.
   const rolesys = true === options.rolesys
 
-  // The user axis is the first declared field; scope:'org' stops enforcing it.
-  // Everything after it (incl. the tenant axis) always stays enforced.
+  // The user axis is the first declared field; a role's scope stops enforcing
+  // the axes more specific than it. Everything from the scope axis up (incl. the
+  // tenant axis) stays enforced. See src/build_roles.ts.
   const firstField = '' + ((options.fields || [])[0] || 'owner_id')
 
   const ownerfield = options.ownerfield
     || (firstField.split(':')[1]
       || firstField.split(':')[0])
 
+  // The tenant axis is the second declared field (org_id, tenant_id, ...); the
+  // default admin preset scopes to it so it stays multi-tenant by default.
+  const secondField = (options.fields || [])[1]
+  const tenantAxis = null == secondField
+    ? undefined
+    : ('' + secondField).split(':')[1] || ('' + secondField).split(':')[0]
+
+  // Convention over configuration: use the caller's roles verbatim when any are
+  // declared, else fall back to the built-in presets. Never merge the two, so a
+  // caller's role set has no hidden preset.
+  const hasRoles = null != options.roles && 0 < Object.keys(options.roles).length
+  const activeRoles = hasRoles ? options.roles : default_roles(tenantAxis)
+
   // Compile roles (a DAG of inherit edges) to a per-role Patrun of
   // entity-pattern -> { ops, spec }. See src/build_roles.ts.
   const compiledRoles = rolesys
     ? build_roles(
       {
-        roles: Object.assign({}, defaults_roles, options.roles),
+        roles: activeRoles,
         fields: options.fields,
         ownerfield
       },

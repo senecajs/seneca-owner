@@ -22,7 +22,7 @@ describe('tenant-key', () => {
         rolesys: true,
         roles: {
           member: { grants: [{ entity: 'sys/note' }] },
-          admin: { scope: 'org', grants: [{ entity: 'sys/note' }] }
+          admin: { scope: 'tenant_id', grants: [{ entity: 'sys/note' }] }
         }
       })
       .ready()
@@ -44,8 +44,8 @@ describe('tenant-key', () => {
 
     const noteB = await memberB.entity('sys/note').save$({ x: 2 })
 
-    // scope:'org' relaxes only the owner axis: admin sees a peer's row within
-    // its own tenant, but the custom tenant axis still bounds it.
+    // scope:'tenant_id' relaxes only the owner axis: admin sees a peer's row
+    // within its own tenant, but the custom tenant axis still bounds it.
     expect(await adminA.entity('sys/note').load$(noteA.id))
       .toMatchObject({ id: noteA.id, owner_id: 'u0', tenant_id: 'A' })
     expect(await adminA.entity('sys/note').load$(noteB.id)).toEqual(null)
@@ -98,8 +98,8 @@ describe('tenant-key', () => {
 
 
   test('custom-label-roles-bound-to-custom-tenant-key', async () => {
-    // No member/admin labels declared; the member preset is still injected, so
-    // role `bar` inherits the wildcard baseline. Tenant axis is tenant_id.
+    // Custom labels with a declared member baseline: `bar` inherits member's
+    // wildcard grant. Tenant axis is tenant_id, so baz scopes to it.
     const s0 = await Seneca({ legacy: false })
       .test()
       .use('promisify')
@@ -109,8 +109,9 @@ describe('tenant-key', () => {
         annotate: ['sys:entity'],
         rolesys: true,
         roles: {
+          member: { grants: [{ entity: '*' }] },
           bar: { grants: [{ entity: 'foo/doc' }] },
-          baz: { scope: 'org', grants: [{ entity: '*' }] }
+          baz: { scope: 'tenant_id', grants: [{ entity: '*' }] }
         }
       })
       .ready()
@@ -131,7 +132,7 @@ describe('tenant-key', () => {
     const misc = await barA.entity('qux/zed').save$({ x: 2 })
     expect(misc).toMatchObject({ owner_id: 'u0', tenant_id: 'A' })
 
-    // baz (scope:'org', wildcard): reads across users in its tenant only
+    // baz (scope:'tenant_id', wildcard): reads across users in its tenant only
     expect(await bazA.entity('foo/doc').load$(doc.id))
       .toMatchObject({ id: doc.id, tenant_id: 'A' })
     // never crosses the custom tenant axis

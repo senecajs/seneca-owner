@@ -110,13 +110,13 @@ describe('build_roles', () => {
   })
 
 
-  test('scope-org-disables-owner-field-per-role', () => {
+  test('scope-disables-relaxed-axis-per-role', () => {
     const compiled = compile({
       member: { grants: [{ entity: 'sys/note' }] },
-      admin: { scope: 'org', inherits: ['member'], grants: [{ entity: '*' }] }
+      admin: { scope: '*', inherits: ['member'], grants: [{ entity: '*' }] }
     })
 
-    // admin scope:org turns off owner_id enforcement on inherited grants too...
+    // admin scope relaxes owner_id on inherited grants too...
     const adminNote = compiled.admin.find({ base: 'sys', name: 'note' })
     expect(adminNote.spec.read.owner_id).toBe(false)
     expect(adminNote.spec.write.owner_id).toBe(false)
@@ -124,6 +124,28 @@ describe('build_roles', () => {
     // ...but member (no scope) keeps enforcing it.
     const memberNote = compiled.member.find({ base: 'sys', name: 'note' })
     expect(memberNote.spec.read || {}).not.toHaveProperty('owner_id', false)
+  })
+
+
+  test('scope-naming-unknown-axis-throws', () => {
+    expect(() => compile({
+      member: { grants: [{ entity: 'sys/note' }] },
+      admin: { scope: 'nope', grants: [{ entity: '*' }] }
+    })).toThrow(/role-scope-unknown/)
+  })
+
+
+  test('scope-retains-tenant-axis', () => {
+    const compiled = compile(
+      { admin: { scope: 'org_id', grants: [{ entity: '*' }] } },
+      ['owner_id', 'org_id']
+    )
+
+    // scope:'org_id' relaxes the owner axis but keeps the tenant axis enforced.
+    const g = compiled.admin.find({ base: 'sys', name: 'note' })
+    expect(g.spec.read.owner_id).toBe(false)
+    expect(g.spec.write.owner_id).toBe(false)
+    expect(g.spec.read).not.toHaveProperty('org_id', false)
   })
 
 

@@ -4,11 +4,11 @@
 const Seneca = require('seneca')
 const Plugin = require('..')
 
-// Convention over configuration for the role set itself. Two roles exist by
-// default without being declared: member (own rows) and admin (whole tenant),
-// both full read+write. Declared roles slot in junior -> senior between them:
-//   member -> ...declared... -> admin
-// Every scenario spans three tenants (A, B, C) to prove the org scope holds.
+// Convention over configuration for the role set itself. With no roles
+// declared, member (own rows) and admin (whole tenant) apply. Declaring any
+// roles replaces the presets entirely: no member/admin is injected, so the
+// caller's set is exactly what is enforced. Scenarios span tenants A, B, C to
+// prove the org scope holds.
 
 const build = (roles) =>
   Seneca({ legacy: false })
@@ -64,37 +64,31 @@ describe('convention', () => {
   })
 
 
-  // Partial: caller declares one custom role; member/admin defaults still apply,
-  // the custom role sits between them (junior -> member, senior -> admin).
-  test('partial-custom-role-between-defaults', async () => {
+  // Declaring roles replaces the presets: no hidden member/admin is injected,
+  // so undeclared roles get nothing.
+  test('declared-roles-replace-presets', async () => {
     const s0 = await build({
-      // whole-org, full access by convention
-      manager: { scope: 'org', grants: [{ entity: '*' }] }
+      manager: { scope: 'org_id', grants: [{ entity: '*' }] }
     })
 
-    const mA0 = as(s0, 'u0', 'A', 'member')
-    const mA1 = as(s0, 'u1', 'A', 'member')
     const gA = as(s0, 'g0', 'A', 'manager')
     const gB = as(s0, 'g1', 'B', 'manager')
-    const oA = as(s0, 'o0', 'A', 'admin')
-    const mC0 = as(s0, 'w0', 'C', 'member')
+    const mA = as(s0, 'u0', 'A', 'member') // undeclared
+    const oA = as(s0, 'o0', 'A', 'admin')   // undeclared
 
-    const nA = await mA0.entity('sys/note').save$({ x: 1 })
-    const nC = await mC0.entity('sys/note').save$({ x: 2 })
+    const note = await gA.entity('sys/note').save$({ x: 1 })
+    expect(note).toMatchObject({ owner_id: 'g0', org_id: 'A' })
 
-    // manager (custom, org role) reads across owners in its own org; the
-    // admin default is still present and sees it too.
-    expect(await gA.entity('sys/note').load$(nA.id))
-      .toMatchObject({ id: nA.id, owner_id: 'u0' })
-    expect(await oA.entity('sys/note').load$(nA.id)).toMatchObject({ id: nA.id })
+    // manager reads across owners in its org, still bounded by org_id.
+    expect(await gA.entity('sys/note').load$(note.id)).toMatchObject({ id: note.id })
+    expect(await gB.entity('sys/note').load$(note.id)).toEqual(null)
 
-    // denials: peer member, manager in another org, manager reaching org C.
-    expect(await mA1.entity('sys/note').load$(nA.id)).toEqual(null)
-    expect(await gB.entity('sys/note').load$(nA.id)).toEqual(null)
-    expect(await gA.entity('sys/note').load$(nC.id)).toEqual(null)
-
-    const listGA = await gA.entity('sys/note').list$()
-    expect(listGA.every((r) => r.org_id === 'A')).toBe(true)
+    // member and admin are not declared, so they get no preset: denied.
+    for (const actor of [mA, oA]) {
+      expect(await actor.entity('sys/note').load$(note.id)).toEqual(null)
+      await expect(actor.entity('sys/note').save$({ x: 2 }))
+        .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
+    }
   })
 
 
@@ -103,8 +97,8 @@ describe('convention', () => {
   test('all-custom-roles', async () => {
     const s0 = await build({
       member: { grants: [{ entity: 'sys/ticket' }] },
-      support: { scope: 'org', grants: [{ entity: 'sys/ticket' }] },
-      admin: { scope: 'org', grants: [{ entity: 'sys/billing' }] }
+      support: { scope: 'org_id', grants: [{ entity: 'sys/ticket' }] },
+      admin: { scope: 'org_id', grants: [{ entity: 'sys/billing' }] }
     })
 
     const mA0 = as(s0, 'u0', 'A', 'member')

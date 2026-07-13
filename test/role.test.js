@@ -15,8 +15,6 @@ describe('role', () => {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
         rolesys: true,
-        // admin comes from the default preset; only the custom member role
-        // needs declaring here.
         roles: {
           member: { grants: [{ entity: 'sys/foo' }] }
         }
@@ -50,9 +48,10 @@ describe('role', () => {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
         rolesys: true,
-        // admin (org-scoped, all entities) is the default preset: not declared.
         roles: {
-          member: { grants: [{ entity: 'sys/foo' }] }
+          member: { grants: [{ entity: 'sys/foo' }] },
+          // no tenant axis declared, so a global admin scopes with '*'
+          admin: { scope: '*', grants: [{ entity: '*' }] }
         }
       })
       .ready()
@@ -283,7 +282,7 @@ describe('role', () => {
         roles: {
           // no ops => all four ops granted
           member: { grants: [{ entity: 'sys/foo' }] },
-          admin: { scope: 'org', grants: [{ entity: 'sys/foo' }] }
+          admin: { scope: '*', grants: [{ entity: 'sys/foo' }] }
         }
       })
       .ready()

@@ -1,10 +1,8 @@
 /* Copyright (c) 2018-2026 Voxgig and other contributors, MIT License */
 
-// Compile the role option into a map of role-name -> Patrun of
-// entity-pattern -> { ops, spec }. Roles form a DAG: each role may `inherit`
-// others, and its effective permissions are the transitive union of every
-// inherited role plus its own. Roles inherit `member` by default; `member` is
-// the root and inherits nothing.
+// Compile roles into a map of role-name -> Patrun of entity-pattern ->
+// { ops, spec }. Roles form an inherit DAG; effective permissions are the
+// transitive union of inherited roles plus own grants.
 
 type Grant = { entity: string; ops?: string[]; spec?: any }
 type Role = { scope?: string; inherits?: any; grants?: Grant[] }
@@ -22,8 +20,6 @@ type BuildRolesDeps = {
   error: (code: string, details?: any) => Error
 }
 
-// A grant is a string entity pattern or { entity, ops?, spec? }. ops use seneca
-// method names (list$ ...); strip the $ to match msg.cmd.
 function normalizeGrant(grant: any) {
   if ('string' === typeof grant) {
     grant = { entity: grant }
@@ -31,6 +27,7 @@ function normalizeGrant(grant: any) {
 
   const allOps = ['list$', 'load$', 'save$', 'remove$']
 
+  // ops are seneca method names; strip the $ to match msg.cmd.
   const ops = new Set(
     (grant.ops || allOps).map((op: string) => ('' + op).replace(/\$$/, ''))
   )
@@ -38,9 +35,7 @@ function normalizeGrant(grant: any) {
   return { entity: '' + grant.entity, ops, spec: grant.spec || {} }
 }
 
-// Merge two permission lists into a superset keyed by entity: ops union, later
-// spec wins. `add` is applied over `base`, so callers pass the more senior list
-// last. Returns fresh objects so a memoized result stays safe to reuse.
+// Union two permission lists keyed by entity: ops union, later spec wins.
 function mergePermissions(deep: any, base: any[], add: any[]) {
   const byEntity: any = {}
 
@@ -74,34 +69,57 @@ function entityPat(entity: string) {
   return (null == name || '*' === name) ? { base } : { base, name }
 }
 
-// Fold scope:'org' into a spec fragment: disable the owner-axis field so the
-// role reads/writes across users, while the tenant axis stays enforced.
-function buildGrantSpec(deep: any, opts: BuildRolesOpts, grantSpec: any, scopeOrg: boolean) {
+// Enforced axis name of a `fields` entry: entity-side of `owner:entity`.
+function axisName(field: string) {
+  const parts = ('' + field).split(':')
+  return null == parts[1] ? parts[0] : parts[1]
+}
+
+// Scope -> cutoff index: axes before it (more specific) are relaxed, the scope
+// axis and broader stay enforced. null: relax none. '*': relax all (global).
+function scopeCutoff(opts: BuildRolesOpts, error: BuildRolesDeps['error'], scope: any): number {
+  const fields = opts.fields || []
+
+  if (null == scope) {
+    return 0
+  }
+
+  if ('*' === scope) {
+    return fields.length
+  }
+
+  const idx = fields.findIndex((field) => axisName(field) === scope)
+
+  if (idx < 0) {
+    throw error('role-scope-unknown', { scope })
+  }
+
+  return idx
+}
+
+function buildGrantSpec(deep: any, opts: BuildRolesOpts, grantSpec: any, cutoff: number) {
   const spec = deep({}, grantSpec)
 
-  if (!scopeOrg) {
+  if (cutoff <= 0) {
     return spec
   }
 
   spec.read = spec.read || {}
   spec.write = spec.write || {}
 
-  for (const field of (opts.fields || [])) {
-    const parts = ('' + field).split(':')
-    const entityField = null == parts[1] ? parts[0] : parts[1]
+  const fields = opts.fields || []
 
-    if (entityField === opts.ownerfield) {
-      spec.read[field] = false
-      spec.write[field] = false
-    }
+  for (let i = 0; i < fields.length && i < cutoff; i++) {
+    spec.read[fields[i]] = false
+    spec.write[fields[i]] = false
   }
 
   return spec
 }
 
-// Resolve a role's inherit edges. Default: inherit `member`. `member` is the
-// root. Explicit `inherits: []` / 'none' / null opts out.
-function resolveInherits(name: string, role: Role) {
+// No `inherits`: inherit `member` when one exists, else nothing. `member` is
+// the root. `inherits: []` / 'none' / null opts out.
+function resolveInherits(name: string, role: Role, roles: Roles) {
   if ('member' === name) {
     return []
   }
@@ -109,7 +127,7 @@ function resolveInherits(name: string, role: Role) {
   const inh = role.inherits
 
   if (undefined === inh) {
-    return ['member']
+    return null != roles['member'] ? ['member'] : []
   }
 
   if (null == inh || 'none' === inh) {
@@ -119,9 +137,8 @@ function resolveInherits(name: string, role: Role) {
   return Array.isArray(inh) ? inh : [inh]
 }
 
-// Effective permissions = transitive closure over inherit edges. Memoized DFS:
-// `visiting` holds the roles on the current stack, so re-entering one is a
-// cycle. Parents merge first, own grants last, so a role's own spec wins.
+// Transitive closure over inherit edges. Memoized DFS; `visiting` detects
+// cycles. Parents merge first, own grants last, so own spec wins.
 function effectivePermissions(
   deep: any,
   error: BuildRolesDeps['error'],
@@ -147,7 +164,7 @@ function effectivePermissions(
   const role = roles[name]
   let permissions: any[] = []
 
-  for (const parent of resolveInherits(name, role)) {
+  for (const parent of resolveInherits(name, role, roles)) {
     permissions = mergePermissions(
       deep, permissions,
       effectivePermissions(deep, error, roles, memo, visiting, parent)
@@ -175,18 +192,14 @@ export function build_roles(
 
   Object.keys(roles).forEach((name: string) => {
     const role = roles[name] || {}
-
-    // scope is role-level: scopeOrg applies to ALL of this role's effective
-    // permissions (inherited + own).
-    const scopeOrg = 'org' === role.scope
-
+    const cutoff = scopeCutoff(opts, error, role.scope)
     const permissions = effectivePermissions(deep, error, roles, memo, visiting, name)
 
     const patrun = Patrun()
     permissions.forEach((perm: any) => {
       patrun.add(
         entityPat(perm.entity),
-        { ops: perm.ops, spec: buildGrantSpec(deep, opts, perm.spec, scopeOrg) }
+        { ops: perm.ops, spec: buildGrantSpec(deep, opts, perm.spec, cutoff) }
       )
     })
 
