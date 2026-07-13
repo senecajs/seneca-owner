@@ -21,6 +21,7 @@ type BuildRolesDeps = {
     Patrun: () => any;
     error: (code: string, details?: any) => Error;
 };
+export declare function axisName(field: string): string;
 export declare function build_roles(opts: BuildRolesOpts, deps: BuildRolesDeps): {
     [name: string]: any;
 };

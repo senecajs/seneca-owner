@@ -70,7 +70,7 @@ function entityPat(entity: string) {
 }
 
 // Enforced axis name of a `fields` entry: entity-side of `owner:entity`.
-function axisName(field: string) {
+export function axisName(field: string) {
   const parts = ('' + field).split(':')
   return null == parts[1] ? parts[0] : parts[1]
 }

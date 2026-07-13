@@ -98,15 +98,11 @@ function Owner(options) {
     // the axes more specific than it. Everything from the scope axis up (incl. the
     // tenant axis) stays enforced. See src/build_roles.ts.
     const firstField = '' + ((options.fields || [])[0] || 'owner_id');
-    const ownerfield = options.ownerfield
-        || (firstField.split(':')[1]
-            || firstField.split(':')[0]);
+    const ownerfield = options.ownerfield || (0, build_roles_1.axisName)(firstField);
     // The tenant axis is the second declared field (org_id, tenant_id, ...); the
     // default admin preset scopes to it so it stays multi-tenant by default.
     const secondField = (options.fields || [])[1];
-    const tenantAxis = null == secondField
-        ? undefined
-        : ('' + secondField).split(':')[1] || ('' + secondField).split(':')[0];
+    const tenantAxis = null == secondField ? undefined : (0, build_roles_1.axisName)('' + secondField);
     const hasRoles = null != options.roles && 0 < Object.keys(options.roles).length;
     const activeRoles = hasRoles ? options.roles : default_roles(tenantAxis);
     // Compile roles (a DAG of inherit edges) to a per-role Patrun of

@@ -6,7 +6,7 @@
 import { Gubu } from 'gubu'
 
 import { refine_query } from './refine_query'
-import { build_roles } from './build_roles'
+import { build_roles, axisName } from './build_roles'
 
 /* $lab:coverage:on$ */
 
@@ -124,16 +124,12 @@ function Owner(this: any, options: any) {
   // tenant axis) stays enforced. See src/build_roles.ts.
   const firstField = '' + ((options.fields || [])[0] || 'owner_id')
 
-  const ownerfield = options.ownerfield
-    || (firstField.split(':')[1]
-      || firstField.split(':')[0])
+  const ownerfield = options.ownerfield || axisName(firstField)
 
   // The tenant axis is the second declared field (org_id, tenant_id, ...); the
   // default admin preset scopes to it so it stays multi-tenant by default.
   const secondField = (options.fields || [])[1]
-  const tenantAxis = null == secondField
-    ? undefined
-    : ('' + secondField).split(':')[1] || ('' + secondField).split(':')[0]
+  const tenantAxis = null == secondField ? undefined : axisName('' + secondField)
 
   const hasRoles = null != options.roles && 0 < Object.keys(options.roles).length
   const activeRoles = hasRoles ? options.roles : default_roles(tenantAxis)

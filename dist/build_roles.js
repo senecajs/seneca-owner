@@ -1,6 +1,7 @@
 "use strict";
 /* Copyright (c) 2018-2026 Voxgig and other contributors, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.axisName = axisName;
 exports.build_roles = build_roles;
 function normalizeGrant(grant) {
     if ('string' === typeof grant) {
