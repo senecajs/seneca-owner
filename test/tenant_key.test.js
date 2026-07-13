@@ -54,4 +54,87 @@ describe('tenant-key', () => {
     expect(listA.every((r) => r.tenant_id === 'A')).toBe(true)
     expect(listA.find((r) => r.id === noteB.id)).toBeUndefined()
   })
+
+
+  test('default-preset-roles-bound-to-custom-tenant-key', async () => {
+    // No roles declared: built-in presets apply, but the tenant axis is tenant_id.
+    const s0 = await Seneca({ legacy: false })
+      .test()
+      .use('promisify')
+      .use('entity')
+      .use(Plugin, {
+        fields: ['owner_id', 'tenant_id'],
+        annotate: ['sys:entity'],
+        rolesys: true
+      })
+      .ready()
+
+    const memberA = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'u0', tenant_id: 'A' } }
+    })
+    const memberB = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'v0', tenant_id: 'B' } }
+    })
+    const adminA = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'a0', tenant_id: 'A', role: 'admin' } }
+    })
+    const adminB = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'b0', tenant_id: 'B', role: 'admin' } }
+    })
+
+    // default member is wildcard: own rows on any entity, stamped with tenant_id
+    const note = await memberA.entity('random/thing').save$({ x: 1 })
+    expect(note).toMatchObject({ owner_id: 'u0', tenant_id: 'A' })
+    expect(note.org_id).toBeUndefined()
+
+    // owner + tenant axes enforced against the custom key
+    expect(await memberB.entity('random/thing').load$(note.id)).toEqual(null)
+
+    // admin reads across users within its tenant, never crossing tenant_id
+    expect(await adminA.entity('random/thing').load$(note.id))
+      .toMatchObject({ id: note.id, tenant_id: 'A' })
+    expect(await adminB.entity('random/thing').load$(note.id)).toEqual(null)
+  })
+
+
+  test('custom-label-roles-bound-to-custom-tenant-key', async () => {
+    // No member/admin labels declared; the member preset is still injected, so
+    // scientist inherits the wildcard baseline. Tenant axis is tenant_id.
+    const s0 = await Seneca({ legacy: false })
+      .test()
+      .use('promisify')
+      .use('entity')
+      .use(Plugin, {
+        fields: ['owner_id', 'tenant_id'],
+        annotate: ['sys:entity'],
+        rolesys: true,
+        roles: {
+          scientist: { grants: [{ entity: 'personal/research' }] },
+          captain: { scope: 'org', grants: [{ entity: '*' }] }
+        }
+      })
+      .ready()
+
+    const sciA = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'u0', tenant_id: 'A', role: 'scientist' } }
+    })
+    const captainA = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'c0', tenant_id: 'A', role: 'captain' } }
+    })
+    const captainB = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'd0', tenant_id: 'B', role: 'captain' } }
+    })
+
+    // scientist: own grant + inherited wildcard member baseline, tenant-bound
+    const research = await sciA.entity('personal/research').save$({ x: 1 })
+    expect(research).toMatchObject({ owner_id: 'u0', tenant_id: 'A' })
+    const misc = await sciA.entity('random/thing').save$({ x: 2 })
+    expect(misc).toMatchObject({ owner_id: 'u0', tenant_id: 'A' })
+
+    // captain (scope:'org', wildcard): reads across users in its tenant only
+    expect(await captainA.entity('personal/research').load$(research.id))
+      .toMatchObject({ id: research.id, tenant_id: 'A' })
+    // never crosses the custom tenant axis
+    expect(await captainB.entity('personal/research').load$(research.id)).toEqual(null)
+  })
 })
