@@ -110,7 +110,7 @@ describe('tenant-key', () => {
         rolesys: true,
         roles: {
           member: { grants: [{ entity: '*' }] },
-          bar: { grants: [{ entity: 'foo/doc' }] },
+          bar: { inherits: ['member'], grants: [{ entity: 'foo/doc' }] },
           baz: { scope: 'tenant_id', grants: [{ entity: '*' }] }
         }
       })
@@ -126,7 +126,7 @@ describe('tenant-key', () => {
       custom: { sysowner: { owner_id: 'd0', tenant_id: 'B', role: 'baz' } }
     })
 
-    // bar: own grant + inherited wildcard member baseline, tenant-bound
+    // bar: own grant + explicit member inheritance, tenant-bound
     const doc = await barA.entity('foo/doc').save$({ x: 1 })
     expect(doc).toMatchObject({ owner_id: 'u0', tenant_id: 'A' })
     const misc = await barA.entity('qux/zed').save$({ x: 2 })

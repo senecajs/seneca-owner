@@ -77,7 +77,7 @@ describe('hierarchy', () => {
         rolesys: true,
         roles: {
           member: { grants: [{ entity: 'sys/note' }] },
-          admin: { scope: 'org_id', grants: [{ entity: 'sys/report' }] }
+          admin: { scope: 'org_id', inherits: ['member'], grants: [{ entity: 'sys/report' }] }
         }
       })
       .ready()
@@ -114,7 +114,7 @@ describe('hierarchy', () => {
         rolesys: true,
         roles: {
           member: { grants: [{ entity: 'sys/note' }] },
-          admin: { scope: 'org_id', grants: [{ entity: 'sys/report' }] }
+          admin: { scope: 'org_id', inherits: ['member'], grants: [{ entity: 'sys/report' }] }
         }
       })
       .ready()

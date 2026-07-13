@@ -74,17 +74,10 @@ function buildGrantSpec(deep, opts, grantSpec, cutoff) {
     }
     return spec;
 }
-// No `inherits`: inherit `member` when one exists, else nothing. `member` is
-// the root. `inherits: []` / 'none' / null opts out.
+// No `inherits` or `inherits: []` / 'none' / null: no implicit inheritance.
 function resolveInherits(name, role, roles) {
-    if ('member' === name) {
-        return [];
-    }
     const inh = role.inherits;
-    if (undefined === inh) {
-        return null != roles['member'] ? ['member'] : [];
-    }
-    if (null == inh || 'none' === inh) {
+    if (null == inh || undefined === inh || 'none' === inh) {
         return [];
     }
     return Array.isArray(inh) ? inh : [inh];

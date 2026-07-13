@@ -86,8 +86,8 @@ describe('permission', () => {
           // member declared explicitly to restrict the baseline (read-only doc)
           // instead of the full-access convention default.
           member: { grants: [{ entity: 'sys/doc', ops: ['list$', 'load$'] }] },
-          editor: { grants: [{ entity: 'sys/doc' }] },
-          admin: { scope: 'org_id', grants: [{ entity: 'sys/audit' }] }
+          editor: { inherits: ['member'], grants: [{ entity: 'sys/doc' }] },
+          admin: { scope: 'org_id', inherits: ['editor'], grants: [{ entity: 'sys/audit' }] }
         }
       })
       .ready()

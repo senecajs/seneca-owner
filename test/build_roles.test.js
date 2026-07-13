@@ -33,31 +33,30 @@ const ALL = ['list', 'load', 'remove', 'save']
 
 describe('build_roles', () => {
 
-  test('role-without-inherits-gets-member-baseline', () => {
+  test('role-without-inherits-gets-only-own-grants', () => {
     const compiled = compile({
       member: { grants: [{ entity: 'sys/note' }] },
       editor: { grants: [{ entity: 'sys/doc' }] }
     })
 
-    // editor inherits member by default: own grant + member baseline.
+    // editor has no inherits: only its own grant, no member baseline.
     expect(grantFor(compiled, 'editor', 'sys', 'doc')).toEqual(ALL)
-    expect(grantFor(compiled, 'editor', 'sys', 'note')).toEqual(ALL)
+    expect(grantFor(compiled, 'editor', 'sys', 'note')).toEqual(null)
 
-    // member is the root, inherits nothing: only its own grant.
+    // member has only its own grant.
     expect(grantFor(compiled, 'member', 'sys', 'note')).toEqual(ALL)
     expect(grantFor(compiled, 'member', 'sys', 'doc')).toEqual(null)
   })
 
 
-  test('inherits-none-opts-out-of-member-baseline', () => {
+  test('explicit-inherits-member-gets-member-grants', () => {
     const compiled = compile({
       member: { grants: [{ entity: 'sys/note' }] },
-      guest: { inherits: 'none', grants: [{ entity: 'sys/doc', ops: ['load$'] }] }
+      editor: { inherits: ['member'], grants: [{ entity: 'sys/doc' }] }
     })
 
-    expect(grantFor(compiled, 'guest', 'sys', 'doc')).toEqual(['load'])
-    // no member baseline leaked in
-    expect(grantFor(compiled, 'guest', 'sys', 'note')).toEqual(null)
+    expect(grantFor(compiled, 'editor', 'sys', 'doc')).toEqual(ALL)
+    expect(grantFor(compiled, 'editor', 'sys', 'note')).toEqual(ALL)
   })
 
 

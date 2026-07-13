@@ -98,7 +98,7 @@ describe('convention', () => {
     const s0 = await build({
       member: { grants: [{ entity: 'sys/ticket' }] },
       support: { scope: 'org_id', grants: [{ entity: 'sys/ticket' }] },
-      admin: { scope: 'org_id', grants: [{ entity: 'sys/billing' }] }
+      admin: { scope: 'org_id', inherits: ['member'], grants: [{ entity: 'sys/billing' }] }
     })
 
     const mA0 = as(s0, 'u0', 'A', 'member')
