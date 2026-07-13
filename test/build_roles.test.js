@@ -118,9 +118,9 @@ describe('build_roles', () => {
     expect(adminNote.spec.read.owner_id).toBe(false)
     expect(adminNote.spec.write.owner_id).toBe(false)
 
-    // ...but member (no scope) keeps enforcing it.
+    // member (no scope) keeps enforcing it.
     const memberNote = compiled.member.find({ base: 'sys', name: 'note' })
-    expect(memberNote.spec.read || {}).not.toHaveProperty('owner_id', false)
+    expect(memberNote.spec.read?.owner_id).not.toBe(false)
   })
 
 
@@ -143,6 +143,7 @@ describe('build_roles', () => {
     expect(g.spec.read.owner_id).toBe(false)
     expect(g.spec.write.owner_id).toBe(false)
     expect(g.spec.read).not.toHaveProperty('org_id', false)
+    expect(g.spec.write).not.toHaveProperty('org_id', false)
   })
 
 
