@@ -10,13 +10,13 @@ type Roles = { [name: string]: Role }
 type Permission = { entity: string; ops: Set<string>; spec: any }
 type Memo = { [name: string]: Permission[] }
 
-type BuildRolesOpts = {
+type BuildRolesOptions = {
   roles: Roles
   fields: string[]
   ownerfield: string
 }
 
-type BuildRolesDeps = {
+type BuildRolesUtils = {
   deep: (...args: any[]) => any
   Patrun: () => any
   error: (code: string, details?: any) => Error
@@ -79,8 +79,8 @@ export function axisName(field: string) {
 
 // Scope -> cutoff index: axes before it (more specific) are relaxed, the scope
 // axis and broader stay enforced. null: relax none. '*': relax all (global).
-function scopeCutoff(opts: BuildRolesOpts, error: BuildRolesDeps['error'], scope: any): number {
-  const fields = opts.fields || []
+function scopeCutoff(options: BuildRolesOptions, error: BuildRolesUtils['error'], scope: any): number {
+  const fields = options.fields || []
 
   if (null == scope) {
     return 0
@@ -99,7 +99,7 @@ function scopeCutoff(opts: BuildRolesOpts, error: BuildRolesDeps['error'], scope
   return idx
 }
 
-function buildGrantSpec(deep: any, opts: BuildRolesOpts, grantSpec: any, cutoff: number) {
+function buildGrantSpec(deep: any, options: BuildRolesOptions, grantSpec: any, cutoff: number) {
   const spec = deep({}, grantSpec)
 
   if (cutoff <= 0) {
@@ -109,7 +109,7 @@ function buildGrantSpec(deep: any, opts: BuildRolesOpts, grantSpec: any, cutoff:
   spec.read = spec.read || {}
   spec.write = spec.write || {}
 
-  const fields = opts.fields || []
+  const fields = options.fields || []
 
   for (let i = 0; i < fields.length && i < cutoff; i++) {
     spec.read[fields[i]] = false
@@ -134,7 +134,7 @@ function resolveInherits(name: string, role: Role, roles: Roles) {
 // cycles. Parents merge first, own grants last, so own spec wins.
 function effectivePermissions(
   deep: any,
-  error: BuildRolesDeps['error'],
+  error: BuildRolesUtils['error'],
   roles: Roles,
   memo: Memo,
   visiting: Set<string>,
@@ -172,11 +172,11 @@ function effectivePermissions(
 }
 
 export function build_roles(
-  opts: BuildRolesOpts,
-  deps: BuildRolesDeps
+  options: BuildRolesOptions,
+  utils: BuildRolesUtils
 ): { [name: string]: any } {
-  const { deep, Patrun, error } = deps
-  const roles = opts.roles || {}
+  const { deep, Patrun, error } = utils
+  const roles = options.roles || {}
 
   const memo: Memo = {}
   const visiting = new Set<string>()
@@ -185,14 +185,14 @@ export function build_roles(
 
   Object.keys(roles).forEach((name: string) => {
     const role = roles[name] || {}
-    const cutoff = scopeCutoff(opts, error, role.scope)
+    const cutoff = scopeCutoff(options, error, role.scope)
     const permissions = effectivePermissions(deep, error, roles, memo, visiting, name)
 
     const patrun = Patrun()
     permissions.forEach((perm: any) => {
       patrun.add(
         entityPat(perm.entity),
-        { ops: perm.ops, spec: buildGrantSpec(deep, opts, perm.spec, cutoff) }
+        { ops: perm.ops, spec: buildGrantSpec(deep, options, perm.spec, cutoff) }
       )
     })
 

@@ -11,18 +11,18 @@ type Role = {
 type Roles = {
     [name: string]: Role;
 };
-type BuildRolesOpts = {
+type BuildRolesOptions = {
     roles: Roles;
     fields: string[];
     ownerfield: string;
 };
-type BuildRolesDeps = {
+type BuildRolesUtils = {
     deep: (...args: any[]) => any;
     Patrun: () => any;
     error: (code: string, details?: any) => Error;
 };
 export declare function axisName(field: string): string;
-export declare function build_roles(opts: BuildRolesOpts, deps: BuildRolesDeps): {
+export declare function build_roles(options: BuildRolesOptions, utils: BuildRolesUtils): {
     [name: string]: any;
 };
 export {};

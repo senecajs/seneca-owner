@@ -46,8 +46,8 @@ function axisName(field) {
 }
 // Scope -> cutoff index: axes before it (more specific) are relaxed, the scope
 // axis and broader stay enforced. null: relax none. '*': relax all (global).
-function scopeCutoff(opts, error, scope) {
-    const fields = opts.fields || [];
+function scopeCutoff(options, error, scope) {
+    const fields = options.fields || [];
     if (null == scope) {
         return 0;
     }
@@ -60,14 +60,14 @@ function scopeCutoff(opts, error, scope) {
     }
     return idx;
 }
-function buildGrantSpec(deep, opts, grantSpec, cutoff) {
+function buildGrantSpec(deep, options, grantSpec, cutoff) {
     const spec = deep({}, grantSpec);
     if (cutoff <= 0) {
         return spec;
     }
     spec.read = spec.read || {};
     spec.write = spec.write || {};
-    const fields = opts.fields || [];
+    const fields = options.fields || [];
     for (let i = 0; i < fields.length && i < cutoff; i++) {
         spec.read[fields[i]] = false;
         spec.write[fields[i]] = false;
@@ -105,19 +105,19 @@ function effectivePermissions(deep, error, roles, memo, visiting, name) {
     visiting.delete(name);
     return (memo[name] = permissions);
 }
-function build_roles(opts, deps) {
-    const { deep, Patrun, error } = deps;
-    const roles = opts.roles || {};
+function build_roles(options, utils) {
+    const { deep, Patrun, error } = utils;
+    const roles = options.roles || {};
     const memo = {};
     const visiting = new Set();
     const compiled = {};
     Object.keys(roles).forEach((name) => {
         const role = roles[name] || {};
-        const cutoff = scopeCutoff(opts, error, role.scope);
+        const cutoff = scopeCutoff(options, error, role.scope);
         const permissions = effectivePermissions(deep, error, roles, memo, visiting, name);
         const patrun = Patrun();
         permissions.forEach((perm) => {
-            patrun.add(entityPat(perm.entity), { ops: perm.ops, spec: buildGrantSpec(deep, opts, perm.spec, cutoff) });
+            patrun.add(entityPat(perm.entity), { ops: perm.ops, spec: buildGrantSpec(deep, options, perm.spec, cutoff) });
         });
         compiled[name] = patrun;
     });
