@@ -30,7 +30,7 @@ describe('convention', () => {
 
   // No role declared: rely entirely on the built-in member/admin defaults.
   test('default-member-and-admin-roles', async () => {
-    const s0 = await build(true)
+    const s0 = await build()
 
     const mA0 = as(s0, 'u0', 'A', 'member')
     const mA1 = as(s0, 'u1', 'A', 'member')

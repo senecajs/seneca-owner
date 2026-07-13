@@ -6,9 +6,9 @@ const gubu_1 = require("gubu");
 const refine_query_1 = require("./refine_query");
 const build_roles_1 = require("./build_roles");
 /* $lab:coverage:on$ */
-const { Open, Any } = gubu_1.Gubu;
+const { Open, Any, Skip } = gubu_1.Gubu;
 // Presets used only when the caller declares no `roles`. admin scopes to the
-// tenant axis, or global ('*') when none is declared.
+// tenant axis (e.g org_id), or global ('*') when none is declared.
 function default_roles(tenantAxis) {
     return {
         member: { grants: [{ entity: '*' }] },
@@ -50,9 +50,9 @@ const defaults = {
     caseprop: 'case$',
     roleprop: 'role',
     defaultRole: Any(),
-    ownerfield: Any(),
+    ownerfield: Skip(String),
     rolesys: false,
-    roles: Any(),
+    roles: Skip(Open({})),
     entprop: 'ent',
     queryprop: 'q',
     annotate: [],

@@ -204,7 +204,7 @@ describe('role', () => {
   })
 
 
-  test('roles-true-uses-default-preset', async () => {
+  test('no-roles-uses-default-preset', async () => {
     const s0 = await Seneca({ legacy: false })
       .test()
       .use('promisify')
@@ -213,7 +213,6 @@ describe('role', () => {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
         rolesys: true,
-        roles: true
       })
       .ready()
 

@@ -10,10 +10,10 @@ import { build_roles } from './build_roles'
 
 /* $lab:coverage:on$ */
 
-const { Open, Any } = Gubu
+const { Open, Any, Skip } = Gubu
 
 // Presets used only when the caller declares no `roles`. admin scopes to the
-// tenant axis, or global ('*') when none is declared.
+// tenant axis (e.g org_id), or global ('*') when none is declared.
 function default_roles(tenantAxis: string | undefined) {
   return {
     member: { grants: [{ entity: '*' }] },
@@ -58,9 +58,9 @@ const defaults = {
   caseprop: 'case$',
   roleprop: 'role',
   defaultRole: Any(),
-  ownerfield: Any(),
+  ownerfield: Skip(String),
   rolesys: false,
-  roles: Any(),
+  roles: Skip(Open({})),
   entprop: 'ent',
   queryprop: 'q',
   annotate: [],
@@ -135,9 +135,6 @@ function Owner(this: any, options: any) {
     ? undefined
     : ('' + secondField).split(':')[1] || ('' + secondField).split(':')[0]
 
-  // Convention over configuration: use the caller's roles verbatim when any are
-  // declared, else fall back to the built-in presets. Never merge the two, so a
-  // caller's role set has no hidden preset.
   const hasRoles = null != options.roles && 0 < Object.keys(options.roles).length
   const activeRoles = hasRoles ? options.roles : default_roles(tenantAxis)
 
