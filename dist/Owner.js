@@ -107,9 +107,6 @@ function Owner(options) {
     const tenantAxis = null == secondField
         ? undefined
         : ('' + secondField).split(':')[1] || ('' + secondField).split(':')[0];
-    // Convention over configuration: use the caller's roles verbatim when any are
-    // declared, else fall back to the built-in presets. Never merge the two, so a
-    // caller's role set has no hidden preset.
     const hasRoles = null != options.roles && 0 < Object.keys(options.roles).length;
     const activeRoles = hasRoles ? options.roles : default_roles(tenantAxis);
     // Compile roles (a DAG of inherit edges) to a per-role Patrun of
