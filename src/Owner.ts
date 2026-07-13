@@ -6,20 +6,11 @@
 import { Gubu } from 'gubu'
 
 import { refine_query } from './refine_query'
-import { build_roles, axisName } from './build_roles'
+import { build_roles, axisName, default_roles, CompiledRoles } from './build_roles'
 
 /* $lab:coverage:on$ */
 
 const { Open, Any, Skip } = Gubu
-
-// Presets used only when the caller declares no `roles`. admin scopes to the
-// tenant axis (e.g org_id), or global ('*') when none is declared.
-function default_roles(tenantAxis: string | undefined) {
-  return {
-    member: { grants: [{ entity: '*' }] },
-    admin: { scope: tenantAxis || '*', grants: [{ entity: '*' }] }
-  }
-}
 
 
 const defaults = {
@@ -136,7 +127,7 @@ function Owner(this: any, options: any) {
 
   // Compile roles (a DAG of inherit edges) to a per-role Patrun of
   // entity-pattern -> { ops, spec }. See src/build_roles.ts.
-  const compiledRoles = rolesys
+  const compiledRoles: CompiledRoles = rolesys
     ? build_roles(
       {
         roles: activeRoles,

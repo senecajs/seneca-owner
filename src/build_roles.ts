@@ -10,7 +10,7 @@ type Roles = { [name: string]: Role }
 type Permission = { entity: string; ops: Set<string>; spec: any }
 type Memo = { [name: string]: Permission[] }
 type RolePatrun = { find: (pat: { base?: string; name?: string }) => { ops: Set<string>; spec: any } | null }
-type CompiledRoles = { [name: string]: RolePatrun }
+export type CompiledRoles = { [name: string]: RolePatrun }
 
 type BuildRolesOptions = {
   roles: Roles
@@ -41,7 +41,7 @@ function normalizeGrant(grant: any): Permission {
 
 // Union two permission lists keyed by entity: ops union, later spec wins.
 function mergePermissions(deep: any, base: Permission[], add: Permission[]): Permission[] {
-  const byEntity: any = {}
+  const byEntity: { [entity: string]: Permission } = {}
 
   base.concat(add).forEach((perm: any) => {
     const prev = byEntity[perm.entity]
@@ -71,6 +71,15 @@ function entityPat(entity: string) {
 
   const [base, name] = entity.split('/')
   return (null == name || '*' === name) ? { base } : { base, name }
+}
+
+// Default roles when caller declares none. admin scopes to the tenant axis,
+// or global ('*') when none is declared.
+export function default_roles(tenantAxis: string | undefined): Roles {
+  return {
+    member: { grants: [{ entity: '*' }] },
+    admin: { scope: tenantAxis || '*', grants: [{ entity: '*' }] }
+  }
 }
 
 // Enforced axis name of a `fields` entry: entity-side of `owner:entity`.
@@ -125,7 +134,7 @@ function buildGrantSpec(deep: any, options: BuildRolesOptions, grantSpec: any, c
 function resolveInherits(name: string, role: Role, roles: Roles) {
   const inh = role.inherits
 
-  if (null == inh || undefined === inh || 'none' === inh) {
+  if (null == inh || 'none' === inh) {
     return []
   }
 

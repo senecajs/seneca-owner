@@ -20,7 +20,7 @@ type RolePatrun = {
         spec: any;
     } | null;
 };
-type CompiledRoles = {
+export type CompiledRoles = {
     [name: string]: RolePatrun;
 };
 type BuildRolesOptions = {
@@ -33,6 +33,7 @@ type BuildRolesUtils = {
     Patrun: () => any;
     error: (code: string, details?: any) => Error;
 };
+export declare function default_roles(tenantAxis: string | undefined): Roles;
 export declare function axisName(field: string): string;
 export declare function build_roles(options: BuildRolesOptions, utils: BuildRolesUtils): CompiledRoles;
 export {};

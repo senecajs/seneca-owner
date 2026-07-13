@@ -1,6 +1,7 @@
 "use strict";
 /* Copyright (c) 2018-2026 Voxgig and other contributors, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.default_roles = default_roles;
 exports.axisName = axisName;
 exports.build_roles = build_roles;
 function normalizeGrant(grant) {
@@ -38,6 +39,14 @@ function entityPat(entity) {
     }
     const [base, name] = entity.split('/');
     return (null == name || '*' === name) ? { base } : { base, name };
+}
+// Default roles when caller declares none. admin scopes to the tenant axis,
+// or global ('*') when none is declared.
+function default_roles(tenantAxis) {
+    return {
+        member: { grants: [{ entity: '*' }] },
+        admin: { scope: tenantAxis || '*', grants: [{ entity: '*' }] }
+    };
 }
 // Enforced axis name of a `fields` entry: entity-side of `owner:entity`.
 function axisName(field) {
@@ -77,7 +86,7 @@ function buildGrantSpec(deep, options, grantSpec, cutoff) {
 // No `inherits` or `inherits: []` / 'none' / null: no implicit inheritance.
 function resolveInherits(name, role, roles) {
     const inh = role.inherits;
-    if (null == inh || undefined === inh || 'none' === inh) {
+    if (null == inh || 'none' === inh) {
         return [];
     }
     return Array.isArray(inh) ? inh : [inh];

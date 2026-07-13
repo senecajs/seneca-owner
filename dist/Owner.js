@@ -7,14 +7,6 @@ const refine_query_1 = require("./refine_query");
 const build_roles_1 = require("./build_roles");
 /* $lab:coverage:on$ */
 const { Open, Any, Skip } = gubu_1.Gubu;
-// Presets used only when the caller declares no `roles`. admin scopes to the
-// tenant axis (e.g org_id), or global ('*') when none is declared.
-function default_roles(tenantAxis) {
-    return {
-        member: { grants: [{ entity: '*' }] },
-        admin: { scope: tenantAxis || '*', grants: [{ entity: '*' }] }
-    };
-}
 const defaults = {
     default_spec: {
         active: true,
@@ -104,7 +96,7 @@ function Owner(options) {
     const secondField = (options.fields || [])[1];
     const tenantAxis = null == secondField ? undefined : (0, build_roles_1.axisName)('' + secondField);
     const hasRoles = null != options.roles && 0 < Object.keys(options.roles).length;
-    const activeRoles = hasRoles ? options.roles : default_roles(tenantAxis);
+    const activeRoles = hasRoles ? options.roles : (0, build_roles_1.default_roles)(tenantAxis);
     // Compile roles (a DAG of inherit edges) to a per-role Patrun of
     // entity-pattern -> { ops, spec }. See src/build_roles.ts.
     const compiledRoles = rolesys
