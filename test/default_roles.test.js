@@ -38,7 +38,7 @@ describe('default-roles', () => {
     // wildcard: member writes own rows on ANY entity, always stamped with both axes
     const note = await memberA0.entity('sys/note').save$({ x: 1 })
     expect(note).toMatchObject({ owner_id: 'u0', org_id: 'A' })
-    const misc = await memberA0.entity('random/thing').save$({ x: 2 })
+    const misc = await memberA0.entity('qux/zed').save$({ x: 2 })
     expect(misc).toMatchObject({ owner_id: 'u0', org_id: 'A' })
 
     // owner axis enforced: a same-tenant peer cannot see another member's row
