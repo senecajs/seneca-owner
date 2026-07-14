@@ -153,8 +153,7 @@ function Owner(options) {
                 // Absent role uses defaultRole (above); an explicit unknown role denies.
                 const rolePatrun = compiledRoles[role] || null;
                 const targetEnt = msg.ent || msg.qent;
-                // No entity to match against -> deny. Otherwise Patrun.find drops the
-                // undefined keys and matches the '*' grant on entity-less messages.
+                // No entity to match against -> deny.
                 if (null == targetEnt) {
                     explain && (expdata.role_denied = { role, entity: null, cmd: msg.cmd });
                     return intern.deny(self, reply, msg, role, null, explain, expdata);
