@@ -3,14 +3,12 @@
 'use strict'
 
 
-import { Gubu } from 'gubu'
+import { Shape, Open, Any, Skip } from 'shape'
 
 import { refine_query } from './refine_query'
 import { build_roles, axisName, default_roles, CompiledRoles } from './build_roles'
 
 /* $lab:coverage:on$ */
-
-const { Open, Any, Skip } = Gubu
 
 
 const defaults = {
@@ -66,9 +64,15 @@ const defaults = {
 }
 
 
+// shape's builder nodes differ from seneca's bundled gubu, so this spec can't
+// be passed as plugin.defaults; validate + default-fill inside the plugin.
+const optionShape = Shape(defaults)
+
 
 function Owner(this: any, options: any) {
   const seneca = this
+
+  options = optionShape(options)
 
   const { deep } = seneca.util
 
@@ -612,7 +616,8 @@ const getprop = (o: any, p: string, _?: any): any =>
 
 
 
-Object.assign(Owner, { defaults, intern })
+// `defaults` not attached as Owner.defaults: validated via optionShape instead.
+Object.assign(Owner, { intern })
 
 // Prevent name mangling
 Object.defineProperty(Owner, 'name', { value: 'Owner' })

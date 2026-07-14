@@ -48,11 +48,13 @@
     "seneca-entity": "^25.1.1",
     "seneca-plugin-validator": "^0.6.1",
     "seneca-promisify": "^3.7.1",
+    "shape": "^10.1.0",
     "typescript": "^5.4.5"
   },
   "peerDependencies": {
     "seneca": ">=3||>=4.0.0-rc2",
     "seneca-entity": ">=26",
-    "seneca-promisify": ">=3"
+    "seneca-promisify": ">=3",
+    "shape": ">=10"
   }
 }
