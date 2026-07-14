@@ -196,8 +196,8 @@ function Owner(this: any, options: any) {
       if (rolesys && owner) {
         const role = null != owner[roleP] ? owner[roleP] : defaultRole
 
-        const rolePatrun = compiledRoles[role]
-          || (null != defaultRole ? compiledRoles[defaultRole] : null)
+        // Absent role uses defaultRole (above); an explicit unknown role denies.
+        const rolePatrun = compiledRoles[role] || null
 
         const targetEnt = msg.ent || msg.qent
 

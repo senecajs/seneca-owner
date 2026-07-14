@@ -295,6 +295,41 @@ describe('role', () => {
   })
 
 
+  test('explicit-unknown-role-denied-not-default', async () => {
+    // An explicit unknown role must deny; only an absent role uses defaultRole.
+    const s0 = await Seneca({ legacy: false })
+      .test()
+      .use('promisify')
+      .use('entity')
+      .use(Plugin, {
+        fields: ['owner_id'],
+        annotate: ['sys:entity'],
+        rolesys: true,
+        roles: {
+          member: { grants: [{ entity: 'sys/foo' }] }
+        }
+      })
+      .ready()
+
+    const unknown = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'u1', role: 'hacker' } }
+    })
+    const absent = s0.delegate(null, {
+      custom: { sysowner: { owner_id: 'u2' } }
+    })
+
+    // unknown role: no permissions, even though member exists
+    expect(await unknown.entity('sys/foo').load$('any-id')).toEqual(null)
+    expect(await unknown.entity('sys/foo').list$()).toEqual([])
+    await expect(unknown.entity('sys/foo').save$({ x: 1 }))
+      .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
+
+    // absent role resolves to defaultRole (member)
+    const foo = await absent.entity('sys/foo').save$({ x: 2 })
+    expect(foo).toMatchObject({ x: 2, owner_id: 'u2' })
+  })
+
+
   test('defaultRole-null-denies-unknown-role', async () => {
     const s0 = await Seneca({ legacy: false })
       .test()
