@@ -60,6 +60,8 @@ describe('hierarchy', () => {
     expect(setting).toMatchObject({ owner_id: 'o0', org_id: 'A' })
     const adminReport = await admin.entity('sys/report').save$({ x: 5 })
     expect(adminReport).toMatchObject({ org_id: 'A' })
+    const adminNote = await admin.entity('sys/note').save$({ x: 6 })
+    expect(adminNote).toMatchObject({ owner_id: 'o0', org_id: 'A', x: 6 })
   })
 
 
