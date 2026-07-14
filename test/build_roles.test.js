@@ -74,6 +74,51 @@ describe('build_roles', () => {
   })
 
 
+  test('specific-grant-unions-inherited-wildcard-ops', () => {
+    const compiled = compile({
+      member: { grants: [{ entity: '*', ops: ['load$'] }] },
+      editor: { inherits: ['member'], grants: [{ entity: 'sys/doc', ops: ['save$'] }] }
+    })
+
+    // specific sys/doc grant unions the inherited wildcard, not shadows it.
+    expect(grantFor(compiled, 'editor', 'sys', 'doc')).toEqual(['load', 'save'])
+    expect(grantFor(compiled, 'editor', 'sys', 'other')).toEqual(['load'])
+  })
+
+
+  test('base-wildcard-unions-into-specific-entity', () => {
+    const compiled = compile({
+      reader: {
+        grants: [
+          { entity: 'sys/*', ops: ['list$', 'load$'] },
+          { entity: 'sys/doc', ops: ['save$'] }
+        ]
+      }
+    })
+
+    // sys/doc folds in the broader sys/* ops; other sys entities keep them too.
+    expect(grantFor(compiled, 'reader', 'sys', 'doc')).toEqual(['list', 'load', 'save'])
+    expect(grantFor(compiled, 'reader', 'sys', 'note')).toEqual(['list', 'load'])
+  })
+
+
+  test('narrower-wildcard-spec-wins-over-broader', () => {
+    const compiled = compile({
+      reader: {
+        grants: [
+          { entity: '*', ops: ['load$'], spec: { read: { owner_id: true } } },
+          { entity: 'sys/*', ops: ['load$'], spec: { read: { owner_id: false } } },
+          { entity: 'sys/doc', ops: ['save$'] }
+        ]
+      }
+    })
+
+    // sys/doc is covered by both '*' and 'sys/*'; the narrower sys/* spec wins.
+    const g = compiled.reader.find({ base: 'sys', name: 'doc' })
+    expect(g.spec.read.owner_id).toBe(false)
+  })
+
+
   test('independent-branches-do-not-cross-contaminate', () => {
     const compiled = compile({
       member: { grants: [{ entity: 'sys/note' }] },

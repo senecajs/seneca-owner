@@ -63,6 +63,49 @@ function mergePermissions(deep: any, base: Permission[], add: Permission[]): Per
   return Object.values(byEntity)
 }
 
+// Does pattern `a` cover `b`? '*' covers all; 'base'/'base/*' cover that base.
+function entityCovers(a: string, b: string): boolean {
+  if (a === b || '*' === a) {
+    return true
+  }
+
+  const [abase, aname] = a.split('/')
+  const [bbase] = b.split('/')
+  return abase === bbase && (null == aname || '*' === aname)
+}
+
+// Coverage breadth: exact(0) < base/*(1) < *(2).
+function coverageRank(entity: string): number {
+  if ('*' === entity) {
+    return 2
+  }
+
+  const [, name] = entity.split('/')
+  return (null == name || '*' === name) ? 1 : 0
+}
+
+// Patrun.find returns only the most-specific match, so a specific grant would
+// shadow broader inherited ones. Fold each strictly-broader grant into the
+// grants it covers, narrowest first so narrower (and own) specs win.
+function unionCoverage(deep: any, permissions: Permission[]): Permission[] {
+  return permissions.map((perm) => {
+    const ops = new Set(perm.ops)
+    let spec = deep({}, perm.spec)
+
+    permissions
+      .filter((other) => other !== perm
+        && entityCovers(other.entity, perm.entity)
+        && !entityCovers(perm.entity, other.entity))
+      .sort((a, b) => coverageRank(a.entity) - coverageRank(b.entity))
+      .forEach((other) => {
+        other.ops.forEach((op: string) => ops.add(op))
+        spec = deep(deep({}, other.spec), spec)
+      })
+
+    return { entity: perm.entity, ops, spec }
+  })
+}
+
 // Entity pattern -> Patrun match key. '*' any, 'base/*' whole base, else exact.
 function entityPat(entity: string) {
   if ('*' === entity) {
@@ -197,7 +240,10 @@ export function build_roles(
   Object.keys(roles).forEach((name: string) => {
     const role = roles[name] || {}
     const cutoff = scopeCutoff(options, error, role.scope)
-    const permissions = effectivePermissions(deep, error, roles, memo, visiting, name)
+    const permissions = unionCoverage(
+      deep,
+      effectivePermissions(deep, error, roles, memo, visiting, name)
+    )
 
     const patrun = Patrun()
     permissions.forEach((perm: any) => {
