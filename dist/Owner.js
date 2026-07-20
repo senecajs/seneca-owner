@@ -2,36 +2,36 @@
 /* $lab:coverage:off$ */
 'use strict';
 Object.defineProperty(exports, "__esModule", { value: true });
-const gubu_1 = require("gubu");
+const shape_1 = require("shape");
 const refine_query_1 = require("./refine_query");
+const build_roles_1 = require("./build_roles");
 /* $lab:coverage:on$ */
-const { Open, Any } = gubu_1.Gubu;
 const defaults = {
     default_spec: {
         active: true,
         fields: [],
-        read: Open({
+        read: (0, shape_1.Open)({
         // default true
         //usr: true,
         //org: true
         }),
-        write: Open({
+        write: (0, shape_1.Open)({
         // default true
         //usr: true,
         //org: true
         }),
-        inject: Open({
+        inject: (0, shape_1.Open)({
         // default true
         //usr: true,
         //org: true
         }),
-        alter: Open({
+        alter: (0, shape_1.Open)({
         // default false
         //usr: false,
         //org: false
         }),
-        public: Open({
-            read: Open({
+        public: (0, shape_1.Open)({
+            read: (0, shape_1.Open)({
             // field -> public boolean field
             })
         })
@@ -39,19 +39,28 @@ const defaults = {
     specprop: 'sys-owner-spec',
     ownerprop: 'sysowner',
     caseprop: 'case$',
+    roleprop: 'role',
+    defaultRole: (0, shape_1.Any)(),
+    ownerfield: (0, shape_1.Skip)(String),
+    rolesys: false,
+    roles: (0, shape_1.Skip)((0, shape_1.Open)({})),
     entprop: 'ent',
     queryprop: 'q',
     annotate: [],
     ignore: [],
     fields: [],
     owner_required: true,
-    explain: Any(),
+    explain: (0, shape_1.Any)(),
     include: {
-        custom: Open({})
+        custom: (0, shape_1.Open)({})
     }
 };
+// shape's builder nodes differ from seneca's bundled gubu, so this spec can't
+// be passed as plugin.defaults; validate + default-fill inside the plugin.
+const optionShape = (0, shape_1.Shape)(defaults);
 function Owner(options) {
     const seneca = this;
+    options = optionShape(options);
     const { deep } = seneca.util;
     intern.deepextend = seneca.util.deepextend;
     options.default_spec.fields = [
@@ -75,6 +84,31 @@ function Owner(options) {
     const caseP = options.caseprop;
     const entprop = options.entprop;
     const queryprop = options.queryprop;
+    const roleP = options.roleprop;
+    // Unset -> 'member'; explicit null -> deny unknown roles.
+    const defaultRole = undefined === options.defaultRole ? 'member' : options.defaultRole;
+    // rolesys gates all role enforcement; false -> plain ownership only.
+    const rolesys = true === options.rolesys;
+    // The user axis is the first declared field; a role's scope stops enforcing
+    // the axes more specific than it. Everything from the scope axis up (incl. the
+    // tenant axis) stays enforced. See src/build_roles.ts.
+    const firstField = '' + ((options.fields || [])[0] || 'owner_id');
+    const ownerfield = options.ownerfield || (0, build_roles_1.axisName)(firstField);
+    // The tenant axis is the second declared field (org_id, tenant_id, ...); the
+    // default admin preset scopes to it so it stays multi-tenant by default.
+    const secondField = (options.fields || [])[1];
+    const tenantAxis = null == secondField ? undefined : (0, build_roles_1.axisName)('' + secondField);
+    const hasRoles = null != options.roles && 0 < Object.keys(options.roles).length;
+    const activeRoles = hasRoles ? options.roles : (0, build_roles_1.default_roles)(tenantAxis);
+    // Compile roles (a DAG of inherit edges) to a per-role Patrun of
+    // entity-pattern -> { ops, spec }. See src/build_roles.ts.
+    const compiledRoles = rolesys
+        ? (0, build_roles_1.build_roles)({
+            roles: activeRoles,
+            fields: options.fields,
+            ownerfield
+        }, { deep, Patrun: seneca.util.Patrun, error: seneca.error.bind(seneca) })
+        : {};
     const include = options.include;
     const hasInclude = 0 < Object.keys(include).length;
     const resolvedFieldNames = {};
@@ -113,6 +147,28 @@ function Owner(options) {
             if (modifiers.query) {
                 explain && (expdata.modifiers.query = true);
                 spec = modifiers.query.call(self, spec, owner, msg);
+            }
+            if (rolesys && owner) {
+                const role = null != owner[roleP] ? owner[roleP] : defaultRole;
+                // Absent role uses defaultRole (above); an explicit unknown role denies.
+                const rolePatrun = compiledRoles[role] || null;
+                const targetEnt = msg.ent || msg.qent;
+                // No entity to match against -> deny.
+                if (null == targetEnt) {
+                    explain && (expdata.role_denied = { role, entity: null, cmd: msg.cmd });
+                    return intern.deny(self, reply, msg, role, null, explain, expdata);
+                }
+                const { base, name } = targetEnt.canon$({ object: true });
+                const entity = base + '/' + name;
+                // No matching grant, or grant lacks this op -> deny.
+                const grant = rolePatrun && rolePatrun.find({ base, name });
+                if (!grant || !grant.ops.has(msg.cmd)) {
+                    explain && (expdata.role_denied = { role, entity, cmd: msg.cmd });
+                    return intern.deny(self, reply, msg, role, entity, explain, expdata);
+                }
+                // make_spec re-unions the grant's fields, so extra grant fields never
+                // drop the base owner/tenant fields.
+                spec = intern.make_spec(grant.spec, spec);
             }
             explain &&
                 ((expdata.owner = owner), (expdata.spec = self.util.deepextend(spec)));
@@ -394,6 +450,21 @@ const intern = (Owner.intern = {
         explain && explain(expdata);
         return reply(self.error(fail.code, fail.details));
     },
+    // Role denial. Reads resolve to empty (list) or absent (load); writes fail
+    // loud on save, silently no-op on remove.
+    deny: function (self, reply, msg, role, entity, explain, expdata) {
+        explain && explain(expdata);
+        if ('list' === msg.cmd) {
+            return reply([]);
+        }
+        if ('remove' === msg.cmd) {
+            return reply(void 0);
+        }
+        if ('save' === msg.cmd) {
+            return reply(self.error('role-entity-not-allowed', { role, entity }));
+        }
+        return reply(null);
+    },
     resolveFieldNames: (fieldName) => {
         const parts = fieldName.split(':');
         const resolvedNames = [parts[0], null == parts[1] ? parts[0] : parts[1]];
@@ -404,7 +475,8 @@ const intern = (Owner.intern = {
 // get dot path property
 const getprop = (o, p, _) => (_ = ('' + p).match(/^([^\.]+)\.(.*)$/), ((null != o && null != _) ?
     getprop(o[_[1]], _[2]) : (null == o ? o : o[p])));
-Object.assign(Owner, { defaults, intern });
+// `defaults` not attached as Owner.defaults: validated via optionShape instead.
+Object.assign(Owner, { intern });
 // Prevent name mangling
 Object.defineProperty(Owner, 'name', { value: 'Owner' });
 exports.default = Owner;

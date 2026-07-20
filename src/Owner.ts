@@ -3,13 +3,12 @@
 'use strict'
 
 
-import { Gubu } from 'gubu'
+import { Shape, Open, Any, Skip } from 'shape'
 
 import { refine_query } from './refine_query'
+import { build_roles, axisName, default_roles, CompiledRoles } from './build_roles'
 
 /* $lab:coverage:on$ */
-
-const { Open, Any } = Gubu
 
 
 const defaults = {
@@ -46,6 +45,11 @@ const defaults = {
   specprop: 'sys-owner-spec',
   ownerprop: 'sysowner',
   caseprop: 'case$',
+  roleprop: 'role',
+  defaultRole: Any(),
+  ownerfield: Skip(String),
+  rolesys: false,
+  roles: Skip(Open({})),
   entprop: 'ent',
   queryprop: 'q',
   annotate: [],
@@ -60,9 +64,15 @@ const defaults = {
 }
 
 
+// shape's builder nodes differ from seneca's bundled gubu, so this spec can't
+// be passed as plugin.defaults; validate + default-fill inside the plugin.
+const optionShape = Shape(defaults)
+
 
 function Owner(this: any, options: any) {
   const seneca = this
+
+  options = optionShape(options)
 
   const { deep } = seneca.util
 
@@ -73,8 +83,6 @@ function Owner(this: any, options: any) {
   ]
   // intern.default_spec = intern.make_spec(options.default_spec)
   const default_spec = intern.make_spec(options.default_spec, {})
-
-
 
   const casemap: any = {}
 
@@ -97,6 +105,42 @@ function Owner(this: any, options: any) {
   const caseP = options.caseprop
   const entprop = options.entprop
   const queryprop = options.queryprop
+  const roleP = options.roleprop
+
+  // Unset -> 'member'; explicit null -> deny unknown roles.
+  const defaultRole =
+    undefined === options.defaultRole ? 'member' : options.defaultRole
+
+  // rolesys gates all role enforcement; false -> plain ownership only.
+  const rolesys = true === options.rolesys
+
+  // The user axis is the first declared field; a role's scope stops enforcing
+  // the axes more specific than it. Everything from the scope axis up (incl. the
+  // tenant axis) stays enforced. See src/build_roles.ts.
+  const firstField = '' + ((options.fields || [])[0] || 'owner_id')
+
+  const ownerfield = options.ownerfield || axisName(firstField)
+
+  // The tenant axis is the second declared field (org_id, tenant_id, ...); the
+  // default admin preset scopes to it so it stays multi-tenant by default.
+  const secondField = (options.fields || [])[1]
+  const tenantAxis = null == secondField ? undefined : axisName('' + secondField)
+
+  const hasRoles = null != options.roles && 0 < Object.keys(options.roles).length
+  const activeRoles = hasRoles ? options.roles : default_roles(tenantAxis)
+
+  // Compile roles (a DAG of inherit edges) to a per-role Patrun of
+  // entity-pattern -> { ops, spec }. See src/build_roles.ts.
+  const compiledRoles: CompiledRoles = rolesys
+    ? build_roles(
+      {
+        roles: activeRoles,
+        fields: options.fields,
+        ownerfield
+      },
+      { deep, Patrun: seneca.util.Patrun, error: seneca.error.bind(seneca) }
+    )
+    : {}
 
   const include = options.include
   const hasInclude = 0 < Object.keys(include).length
@@ -147,6 +191,36 @@ function Owner(this: any, options: any) {
       if (modifiers.query) {
         explain && (expdata.modifiers.query = true)
         spec = modifiers.query.call(self, spec, owner, msg)
+      }
+
+      if (rolesys && owner) {
+        const role = null != owner[roleP] ? owner[roleP] : defaultRole
+
+        // Absent role uses defaultRole (above); an explicit unknown role denies.
+        const rolePatrun = compiledRoles[role] || null
+
+        const targetEnt = msg.ent || msg.qent
+
+        // No entity to match against -> deny.
+        if (null == targetEnt) {
+          explain && (expdata.role_denied = { role, entity: null, cmd: msg.cmd })
+          return intern.deny(self, reply, msg, role, null, explain, expdata)
+        }
+
+        const { base, name } = targetEnt.canon$({ object: true })
+        const entity = base + '/' + name
+
+        // No matching grant, or grant lacks this op -> deny.
+        const grant = rolePatrun && rolePatrun.find({ base, name })
+
+        if (!grant || !grant.ops.has(msg.cmd)) {
+          explain && (expdata.role_denied = { role, entity, cmd: msg.cmd })
+          return intern.deny(self, reply, msg, role, entity, explain, expdata)
+        }
+
+        // make_spec re-unions the grant's fields, so extra grant fields never
+        // drop the base owner/tenant fields.
+        spec = intern.make_spec(grant.spec, spec)
       }
 
       explain &&
@@ -505,6 +579,27 @@ const intern = (Owner.intern = {
     return reply(self.error(fail.code, fail.details))
   },
 
+  // Role denial. Reads resolve to empty (list) or absent (load); writes fail
+  // loud on save, silently no-op on remove.
+  deny: function(self: any, reply: any, msg: any, role: any, entity: any,
+    explain: any, expdata: any) {
+    explain && explain(expdata)
+
+    if ('list' === msg.cmd) {
+      return reply([])
+    }
+
+    if ('remove' === msg.cmd) {
+      return reply(void 0)
+    }
+
+    if ('save' === msg.cmd) {
+      return reply(self.error('role-entity-not-allowed', { role, entity }))
+    }
+
+    return reply(null)
+  },
+
   resolveFieldNames: (fieldName: string) => {
     const parts = fieldName.split(':')
     const resolvedNames = [parts[0], null == parts[1] ? parts[0] : parts[1]]
@@ -520,7 +615,8 @@ const getprop = (o: any, p: string, _?: any): any =>
 
 
 
-Object.assign(Owner, { defaults, intern })
+// `defaults` not attached as Owner.defaults: validated via optionShape instead.
+Object.assign(Owner, { intern })
 
 // Prevent name mangling
 Object.defineProperty(Owner, 'name', { value: 'Owner' })
