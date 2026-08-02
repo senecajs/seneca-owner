@@ -3,9 +3,21 @@
 
 const { expect } = require('@hapi/code')
 
+// Recursing into a Date, RegExp, Map etc. would compare zero own keys and
+// pass vacuously, so they are compared whole, as jest's `toMatchObject` did.
+function is_plain_object(val) {
+  if (null === val || 'object' !== typeof val) return false
+  const proto = Object.getPrototypeOf(val)
+  return null === proto || Object.prototype === proto
+}
+
 // Recursive partial-match assertion, equivalent to jest's `toMatchObject`:
 // objects may have extra actual keys (ignored), arrays must match length
 // and position, and matching recurses into nested objects/arrays.
+//
+// Neither `assert.partialDeepStrictEqual` nor @hapi/code's `.to.contain()`
+// can replace this: both treat an expected array as a *subset* of the actual
+// array, so list assertions would silently stop checking length and position.
 function partial(actual, expected) {
   if (Array.isArray(expected)) {
     expect(Array.isArray(actual)).to.equal(true)
@@ -14,8 +26,8 @@ function partial(actual, expected) {
     return
   }
 
-  if (expected !== null && typeof expected === 'object') {
-    expect(actual !== null && typeof actual === 'object').to.equal(true)
+  if (is_plain_object(expected)) {
+    expect(actual !== null && 'object' === typeof actual).to.equal(true)
     for (const key of Object.keys(expected)) {
       partial(actual[key], expected[key])
     }
@@ -27,15 +39,7 @@ function partial(actual, expected) {
 
 // Equivalent to jest's `await expect(promise).rejects.toMatchObject(expected)`.
 async function rejects(promise, expected) {
-  let err
-
-  try {
-    await promise
-  } catch (e) {
-    err = e
-  }
-
-  expect(err).to.exist()
+  const err = await expect(promise).to.reject()
   partial(err, expected)
 }
 

@@ -146,7 +146,7 @@ describe('owner', function () {
     })
   })
 
-  test('spec-load-field-match', (t, fin) => {
+  test('spec-load-field-match-multi-value', (t, fin) => {
     var tmp = {}
 
     // w can have multiple values
@@ -190,7 +190,7 @@ describe('owner', function () {
           'role:foo,add:bar',
           { data: { d: 4, w: 3 } },
           function (err, bar4) {
-            expect(err).to.exist()
+            expect(err).to.not.equal(undefined)
             expect(err.code).to.equal('create-not-allowed')
           }
         )
@@ -199,19 +199,19 @@ describe('owner', function () {
 
             .act('role:foo,load:bar', { id: tmp.bar1.id }, function (err, out) {
               if (err) return fin(err)
-              expect(out).to.exist()
+              expect(out).to.not.equal(undefined)
               expect(out.w).to.equal(null)
             })
 
             .act('role:foo,load:bar', { id: tmp.bar2.id }, function (err, out) {
               if (err) return fin(err)
-              expect(out).to.exist()
+              expect(out).to.not.equal(undefined)
               expect(out.w).to.equal(1)
             })
 
             .act('role:foo,load:bar', { id: tmp.bar3.id }, function (err, out) {
               if (err) return fin(err)
-              expect(out).to.exist()
+              expect(out).to.not.equal(undefined)
               expect(out.w).to.equal(2)
             })
 
@@ -220,7 +220,7 @@ describe('owner', function () {
     })
   })
 
-  test('spec-load-field-match', (t, fin) => {
+  test('spec-load-field-match-read-write-modes', (t, fin) => {
     var tmp = {}
 
     // w is only for reads, s for all modes, expect write
@@ -345,7 +345,7 @@ describe('owner', function () {
             'role:foo,load:bar',
             { y: 1, id: out.id },
             function (err, out) {
-              expect(out).to.exist()
+              expect(out).to.not.equal(undefined)
               expect(out.usr).to.equal('alice')
               expect(out.org).to.equal('wonderland')
               fin()
@@ -1622,7 +1622,7 @@ function allowed(mark, data) {
     expect(err).to.equal(null)
 
     if (null !== data) {
-      expect(out).to.exist()
+      expect(out).to.not.equal(undefined)
 
       if ('string' === typeof data) {
         expect(out.map((x) => '' + x.d).join('')).to.equal(data)
