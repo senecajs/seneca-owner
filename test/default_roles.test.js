@@ -1,6 +1,10 @@
 /* Copyright (c) 2018-2026 voxgig and other contributors, MIT License */
 'use strict'
 
+const { describe, test } = require('node:test')
+const { expect } = require('@hapi/code')
+const { partial } = require('./helper')
+
 const Seneca = require('seneca')
 const Plugin = require('..')
 
@@ -36,14 +40,14 @@ describe('default-roles', () => {
 
     // wildcard: member writes own rows on ANY entity, always stamped with both axes
     const note = await memberA0.entity('sys/note').save$({ x: 1 })
-    expect(note).toMatchObject({ owner_id: 'u0', org_id: 'A' })
+    partial(note, { owner_id: 'u0', org_id: 'A' })
     const misc = await memberA0.entity('qux/zed').save$({ x: 2 })
-    expect(misc).toMatchObject({ owner_id: 'u0', org_id: 'A' })
+    partial(misc, { owner_id: 'u0', org_id: 'A' })
 
     // owner axis enforced: a same-tenant peer cannot see another member's row
-    expect(await memberA1.entity('sys/note').load$(note.id)).toEqual(null)
+    expect(await memberA1.entity('sys/note').load$(note.id)).to.equal(null)
     // tenant axis enforced: a different tenant cannot see it either
-    expect(await memberB.entity('sys/note').load$(note.id)).toEqual(null)
+    expect(await memberB.entity('sys/note').load$(note.id)).to.equal(null)
   })
 
 
@@ -72,13 +76,12 @@ describe('default-roles', () => {
     const note = await memberA.entity('sys/note').save$({ x: 1 })
 
     // owner axis relaxed: admin sees a peer's row within its own tenant
-    expect(await adminA.entity('sys/note').load$(note.id))
-      .toMatchObject({ id: note.id, owner_id: 'u0', org_id: 'A' })
+    partial(await adminA.entity('sys/note').load$(note.id), { id: note.id, owner_id: 'u0', org_id: 'A' })
 
     // tenant axis still enforced: admin of another tenant is blocked
-    expect(await adminB.entity('sys/note').load$(note.id)).toEqual(null)
+    expect(await adminB.entity('sys/note').load$(note.id)).to.equal(null)
 
     const listA = await adminA.entity('sys/note').list$()
-    expect(listA.every((r) => r.org_id === 'A')).toBe(true)
+    expect(listA.every((r) => r.org_id === 'A')).to.equal(true)
   })
 })

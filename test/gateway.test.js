@@ -1,6 +1,10 @@
 /* Copyright (c) 2018-2023 voxgig and other contributors, MIT License */
 'use strict'
 
+const { describe, test } = require('node:test')
+const { expect } = require('@hapi/code')
+const { partial } = require('./helper')
+
 const Util = require('util')
 
 const Seneca = require('seneca')
@@ -33,11 +37,11 @@ describe('gateway', () => {
     // No ownerprop ('sysowner') so not activated
     let f0 = await s0.entity('foo').save$({x:1})
     //console.log(f0)
-    expect(f0).toMatchObject({x:1})
+    partial(f0, {x:1})
     
     let f0r = await s0.entity('foo').load$(f0.id)
     // console.log(f0r)
-    expect(f0r).toMatchObject({x:1,id:f0.id})
+    partial(f0r, {x:1,id:f0.id})
     
     const su0 = s0.delegate(null,{
       custom: { principal: { user: { id:'u0'} } }
@@ -46,18 +50,18 @@ describe('gateway', () => {
 
     let f0u0 = await su0.entity('foo').save$({x:2})
     // console.log(f0u0)
-    expect(f0u0).toMatchObject({x:2,owner_id:'u0'})
+    partial(f0u0, {x:2,owner_id:'u0'})
     
     let f0u0r = await su0.entity('foo').load$(f0u0.id)
     // console.log(f0u0r)
-    expect(f0u0r).toMatchObject({x:2,owner_id:'u0',id:f0u0.id})
+    partial(f0u0r, {x:2,owner_id:'u0',id:f0u0.id})
 
     const su1 = s0.delegate(null,{
       custom: { principal: { user: { id:'u1'} } }
     })
     let f0u1r = await su1.entity('foo').load$(f0u0.id)
     // console.log(f0u1r) // null as not owned
-    expect(f0u1r).toEqual(null)
+    expect(f0u1r).to.equal(null)
 
     await su1.entity('foo').save$({x:3})
     await su1.entity('foo').save$({x:4})
@@ -65,18 +69,18 @@ describe('gateway', () => {
     
     const listsu0 = await su0.entity('foo').list$()
     // console.log(listsu0)
-    expect(listsu0).toMatchObject([{x:2,owner_id:'u0'}])
+    partial(listsu0, [{x:2,owner_id:'u0'}])
 
     const listsu1 = await su1.entity('foo').list$()
     // console.log(listsu1)
-    expect(listsu1).toMatchObject([
+    partial(listsu1, [
       {x:3,owner_id:'u1'},
       {x:4,owner_id:'u1'}
     ])
 
     const lists0 = await s0.entity('foo').list$()
     // console.log(lists0)
-    expect(lists0).toMatchObject([
+    partial(lists0, [
       {x:1},
       {x:2,owner_id:'u0'},
       {x:3,owner_id:'u1'},
@@ -86,27 +90,27 @@ describe('gateway', () => {
     // Not yours to delete!
     await su1.entity('foo').remove$(f0u0.id)
     let f0u0d = await su0.entity('foo').load$(f0u0.id)
-    expect(f0u0d).toMatchObject({x:2,owner_id:'u0',id:f0u0.id})
+    partial(f0u0d, {x:2,owner_id:'u0',id:f0u0.id})
 
     // Now it's gone
     await su0.entity('foo').remove$(f0u0.id)
     let f0u0dd = await su0.entity('foo').load$(f0u0.id)
-    expect(f0u0dd).toEqual(null)
+    expect(f0u0dd).to.equal(null)
 
     const listsu0d = await su0.entity('foo').list$()
     // console.log(listsu0)
-    expect(listsu0d).toMatchObject([])
+    partial(listsu0d, [])
 
     const listsu1d = await su1.entity('foo').list$()
     // console.log(listsu1)
-    expect(listsu1d).toMatchObject([
+    partial(listsu1d, [
       {x:3,owner_id:'u1'},
       {x:4,owner_id:'u1'}
     ])
 
     const lists0d = await s0.entity('foo').list$()
     // console.log(lists0)
-    expect(lists0d).toMatchObject([
+    partial(lists0d, [
       {x:1},
       {x:3,owner_id:'u1'},
       {x:4,owner_id:'u1'}
@@ -138,29 +142,29 @@ describe('gateway', () => {
 
     let f0u0 = await su0.entity('foo').save$({x:2})
     // console.log(f0u0)
-    expect(f0u0).toMatchObject({x:2,owner_id:'u0'})
+    partial(f0u0, {x:2,owner_id:'u0'})
 
 
     let q0u0 = await su0.entity('qaz').save$({y:1})
     // console.log(q0u0)
-    expect(q0u0).toMatchObject({y:1})
-    expect(q0u0.owner_id).toBeUndefined()
+    partial(q0u0, {y:1})
+    expect(q0u0.owner_id).to.equal(undefined)
 
     // TODO: fix explain
     let exp = []
     let q1u0 = await su0.entity('qaz').save$({y:1,directive$:{explain$:exp}})
     // console.log(q1u0)
     // console.log('EXPLAIN', exp)
-    expect(q1u0).toMatchObject({y:1})
-    expect(q1u0.owner_id).toBeUndefined()
+    partial(q1u0, {y:1})
+    expect(q1u0.owner_id).to.equal(undefined)
     
     exp = []
     let q2u0 = await s0.post({b:1,y:11,explain$:exp})
     // console.log(q2u0)
     // console.log('EXPLAIN', q2u0, exp)
-    expect(q2u0).toMatchObject({y:11})
-    expect(q2u0.owner_id).toBeUndefined()
-    expect(exp[3]).toMatchObject({
+    partial(q2u0, {y:11})
+    expect(q2u0.owner_id).to.equal(undefined)
+    partial(exp[3], {
       msgpat: { sys: 'entity' },
       ignored: true,
       ignorepat: { sys: 'entity', name: 'qaz' },

@@ -1,6 +1,10 @@
 /* Copyright (c) 2018-2026 voxgig and other contributors, MIT License */
 'use strict'
 
+const { describe, test } = require('node:test')
+const { expect } = require('@hapi/code')
+const { partial, rejects } = require('./helper')
+
 const Seneca = require('seneca')
 const Plugin = require('..')
 
@@ -37,29 +41,28 @@ describe('permission', () => {
     // Happy path: full access to any entity, each stamped with the caller.
     const noteA0 = await a0.entity('sys/note').save$({ x: 1 })
     const secretA0 = await a0.entity('sys/secret').save$({ x: 2 })
-    expect(noteA0).toMatchObject({ owner_id: 'a0', org_id: 'A' })
-    expect(secretA0).toMatchObject({ owner_id: 'a0', org_id: 'A' })
+    partial(noteA0, { owner_id: 'a0', org_id: 'A' })
+    partial(secretA0, { owner_id: 'a0', org_id: 'A' })
 
     const noteB0 = await b0.entity('sys/note').save$({ x: 3 })
-    expect(noteB0).toMatchObject({ owner_id: 'b0', org_id: 'B' })
+    partial(noteB0, { owner_id: 'b0', org_id: 'B' })
 
     // Owner reads its own rows.
-    expect(await a0.entity('sys/note').load$(noteA0.id))
-      .toMatchObject({ id: noteA0.id, owner_id: 'a0' })
+    partial(await a0.entity('sys/note').load$(noteA0.id), { id: noteA0.id, owner_id: 'a0' })
 
     // Same tenant, different owner => denied.
-    expect(await a1.entity('sys/note').load$(noteA0.id)).toEqual(null)
-    expect(await a1.entity('sys/secret').load$(secretA0.id)).toEqual(null)
+    expect(await a1.entity('sys/note').load$(noteA0.id)).to.equal(null)
+    expect(await a1.entity('sys/secret').load$(secretA0.id)).to.equal(null)
 
     // Different tenant => denied both ways.
-    expect(await b0.entity('sys/note').load$(noteA0.id)).toEqual(null)
-    expect(await a0.entity('sys/note').load$(noteB0.id)).toEqual(null)
+    expect(await b0.entity('sys/note').load$(noteA0.id)).to.equal(null)
+    expect(await a0.entity('sys/note').load$(noteB0.id)).to.equal(null)
 
     // Lists never leak across the owner/org boundary.
     const listA1 = await a1.entity('sys/note').list$()
-    expect(listA1.find((r) => r.id === noteA0.id)).toBeUndefined()
+    expect(listA1.find((r) => r.id === noteA0.id)).to.equal(undefined)
     const listB0 = await b0.entity('sys/note').list$()
-    expect(listB0.every((r) => r.org_id === 'B')).toBe(true)
+    expect(listB0.every((r) => r.org_id === 'B')).to.equal(true)
   })
 
 
@@ -99,36 +102,30 @@ describe('permission', () => {
 
     // Happy path: editor writes a doc, reads it back.
     const doc = await editor.entity('sys/doc').save$({ t: 'draft' })
-    expect(doc).toMatchObject({ owner_id: 'e0', org_id: 'A' })
-    expect(await editor.entity('sys/doc').load$(doc.id))
-      .toMatchObject({ id: doc.id, owner_id: 'e0' })
+    partial(doc, { owner_id: 'e0', org_id: 'A' })
+    partial(await editor.entity('sys/doc').load$(doc.id), { id: doc.id, owner_id: 'e0' })
 
     // Happy path: admin writes audit, and (org role + inherited doc) reads
     // the editor's doc within the same org.
     const audit = await admin.entity('sys/audit').save$({ t: 'log' })
-    expect(audit).toMatchObject({ owner_id: 'm0', org_id: 'A' })
-    expect(await admin.entity('sys/doc').load$(doc.id))
-      .toMatchObject({ id: doc.id, owner_id: 'e0' })
+    partial(audit, { owner_id: 'm0', org_id: 'A' })
+    partial(await admin.entity('sys/doc').load$(doc.id), { id: doc.id, owner_id: 'e0' })
 
     // member: read granted on its own doc, but write denied.
     const own = await s0.entity('sys/doc').save$({ owner_id: 'u0', org_id: 'A', t: 'x' })
-    expect(await member.entity('sys/doc').load$(own.id))
-      .toMatchObject({ id: own.id, owner_id: 'u0' })
-    await expect(member.entity('sys/doc').save$({ t: 'y' }))
-      .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
+    partial(await member.entity('sys/doc').load$(own.id), { id: own.id, owner_id: 'u0' })
+    await rejects(member.entity('sys/doc').save$({ t: 'y' }), { code: 'role-entity-not-allowed' })
 
     // Bad actor: editor cannot reach the senior-only sys/audit entity.
-    expect(await editor.entity('sys/audit').load$(audit.id)).toEqual(null)
-    expect(await editor.entity('sys/audit').list$()).toEqual([])
-    await expect(editor.entity('sys/audit').save$({ t: 'z' }))
-      .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
+    expect(await editor.entity('sys/audit').load$(audit.id)).to.equal(null)
+    expect(await editor.entity('sys/audit').list$()).to.equal([])
+    await rejects(editor.entity('sys/audit').save$({ t: 'z' }), { code: 'role-entity-not-allowed' })
 
     // Bad actor: an entity granted to no role is denied for everyone.
     for (const actor of [member, editor, admin]) {
-      expect(await actor.entity('sys/secret').load$('any-id')).toEqual(null)
-      expect(await actor.entity('sys/secret').list$()).toEqual([])
-      await expect(actor.entity('sys/secret').save$({ t: 'q' }))
-        .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
+      expect(await actor.entity('sys/secret').load$('any-id')).to.equal(null)
+      expect(await actor.entity('sys/secret').list$()).to.equal([])
+      await rejects(actor.entity('sys/secret').save$({ t: 'q' }), { code: 'role-entity-not-allowed' })
     }
   })
 })

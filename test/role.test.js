@@ -1,6 +1,10 @@
 /* Copyright (c) 2018-2026 voxgig and other contributors, MIT License */
 'use strict'
 
+const { describe, test } = require('node:test')
+const { expect } = require('@hapi/code')
+const { partial, rejects } = require('./helper')
+
 const Seneca = require('seneca')
 const Plugin = require('..')
 
@@ -29,13 +33,13 @@ describe('role', () => {
     })
 
     const foo = await u0.entity('sys/foo').save$({ x: 1 })
-    expect(foo).toMatchObject({ x: 1, owner_id: 'u0' })
+    partial(foo, { x: 1, owner_id: 'u0' })
 
     const own = await u0.entity('sys/foo').load$(foo.id)
-    expect(own).toMatchObject({ id: foo.id, owner_id: 'u0' })
+    partial(own, { id: foo.id, owner_id: 'u0' })
 
     const notOwned = await u1.entity('sys/foo').load$(foo.id)
-    expect(notOwned).toEqual(null)
+    expect(notOwned).to.equal(null)
   })
 
 
@@ -66,7 +70,7 @@ describe('role', () => {
     const foo = await member.entity('sys/foo').save$({ x: 1 })
 
     const seen = await admin.entity('sys/foo').load$(foo.id)
-    expect(seen).toMatchObject({ id: foo.id, owner_id: 'u0' })
+    partial(seen, { id: foo.id, owner_id: 'u0' })
   })
 
 
@@ -90,13 +94,12 @@ describe('role', () => {
     })
 
     const load = await member.entity('sys/bar').load$('any-id')
-    expect(load).toEqual(null)
+    expect(load).to.equal(null)
 
     const list = await member.entity('sys/bar').list$()
-    expect(list).toEqual([])
+    expect(list).to.equal([])
 
-    await expect(member.entity('sys/bar').save$({ x: 1 }))
-      .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
+    await rejects(member.entity('sys/bar').save$({ x: 1 }), { code: 'role-entity-not-allowed' })
   })
 
 
@@ -123,10 +126,9 @@ describe('role', () => {
     })
 
     const read = await member.entity('sys/foo').load$(seed.id)
-    expect(read).toMatchObject({ id: seed.id, owner_id: 'u0' })
+    partial(read, { id: seed.id, owner_id: 'u0' })
 
-    await expect(member.entity('sys/foo').save$({ y: 2 }))
-      .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
+    await rejects(member.entity('sys/foo').save$({ y: 2 }), { code: 'role-entity-not-allowed' })
   })
 
 
@@ -151,12 +153,11 @@ describe('role', () => {
     })
 
     const foo = await member.entity('sys/foo').save$({ x: 1 })
-    expect(foo).toMatchObject({ x: 1, owner_id: 'u0' })
+    partial(foo, { x: 1, owner_id: 'u0' })
 
     // remove$ not granted => silent no-op, row still present
     await member.entity('sys/foo').remove$(foo.id)
-    expect(await member.entity('sys/foo').load$(foo.id))
-      .toMatchObject({ id: foo.id })
+    partial(await member.entity('sys/foo').load$(foo.id), { id: foo.id })
   })
 
 
@@ -192,15 +193,14 @@ describe('role', () => {
 
     const note = await u0.entity('sys/note').save$({ x: 1 })
     const pub = await u0.entity('sys/public').save$({ y: 2 })
-    expect(note).toMatchObject({ owner_id: 'u0' })
-    expect(pub).toMatchObject({ owner_id: 'u0' })
+    partial(note, { owner_id: 'u0' })
+    partial(pub, { owner_id: 'u0' })
 
     // sys/note stays own-rows: u1 cannot read u0's note.
-    expect(await u1.entity('sys/note').load$(note.id)).toEqual(null)
+    expect(await u1.entity('sys/note').load$(note.id)).to.equal(null)
 
     // sys/public relaxes the owner field: u1 reads u0's public row.
-    expect(await u1.entity('sys/public').load$(pub.id))
-      .toMatchObject({ id: pub.id, owner_id: 'u0' })
+    partial(await u1.entity('sys/public').load$(pub.id), { id: pub.id, owner_id: 'u0' })
   })
 
 
@@ -224,10 +224,10 @@ describe('role', () => {
     })
 
     const foo = await member.entity('sys/foo').save$({ x: 1 })
-    expect(foo).toMatchObject({ x: 1, owner_id: 'u0' })
+    partial(foo, { x: 1, owner_id: 'u0' })
 
     const seen = await admin.entity('sys/foo').load$(foo.id)
-    expect(seen).toMatchObject({ id: foo.id, owner_id: 'u0' })
+    partial(seen, { id: foo.id, owner_id: 'u0' })
   })
 
 
@@ -252,20 +252,20 @@ describe('role', () => {
 
     // wildcard => rw on any entity, still owner-scoped.
     const foo = await member.entity('sys/foo').save$({ x: 1 })
-    expect(foo).toMatchObject({ x: 1, owner_id: 'u0' })
+    partial(foo, { x: 1, owner_id: 'u0' })
 
     const bar = await member.entity('sys/bar').save$({ y: 2 })
-    expect(bar).toMatchObject({ y: 2, owner_id: 'u0' })
+    partial(bar, { y: 2, owner_id: 'u0' })
 
     const readFoo = await member.entity('sys/foo').load$(foo.id)
-    expect(readFoo).toMatchObject({ id: foo.id, owner_id: 'u0' })
+    partial(readFoo, { id: foo.id, owner_id: 'u0' })
 
     // Still owner-scoped: another member cannot read u0's row.
     const u1 = s0.delegate(null, {
       custom: { sysowner: { owner_id: 'u1', role: 'member' } }
     })
     const notOwned = await u1.entity('sys/foo').load$(foo.id)
-    expect(notOwned).toEqual(null)
+    expect(notOwned).to.equal(null)
   })
 
 
@@ -288,10 +288,10 @@ describe('role', () => {
     })
 
     const foo = await u0.entity('sys/foo').save$({ x: 1 })
-    expect(foo).toMatchObject({ x: 1, owner_id: 'u0' })
+    partial(foo, { x: 1, owner_id: 'u0' })
 
     const notOwned = await u1.entity('sys/foo').load$(foo.id)
-    expect(notOwned).toEqual(null)
+    expect(notOwned).to.equal(null)
   })
 
 
@@ -319,14 +319,13 @@ describe('role', () => {
     })
 
     // unknown role: no permissions, even though member exists
-    expect(await unknown.entity('sys/foo').load$('any-id')).toEqual(null)
-    expect(await unknown.entity('sys/foo').list$()).toEqual([])
-    await expect(unknown.entity('sys/foo').save$({ x: 1 }))
-      .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
+    expect(await unknown.entity('sys/foo').load$('any-id')).to.equal(null)
+    expect(await unknown.entity('sys/foo').list$()).to.equal([])
+    await rejects(unknown.entity('sys/foo').save$({ x: 1 }), { code: 'role-entity-not-allowed' })
 
     // absent role resolves to defaultRole (member)
     const foo = await absent.entity('sys/foo').save$({ x: 2 })
-    expect(foo).toMatchObject({ x: 2, owner_id: 'u2' })
+    partial(foo, { x: 2, owner_id: 'u2' })
   })
 
 
@@ -354,12 +353,11 @@ describe('role', () => {
     })
 
     const foo = await known.entity('sys/foo').save$({ x: 1 })
-    expect(foo).toMatchObject({ x: 1, owner_id: 'u0' })
+    partial(foo, { x: 1, owner_id: 'u0' })
 
     // unknown role denied entirely
-    expect(await unknown.entity('sys/foo').load$('any-id')).toEqual(null)
-    expect(await unknown.entity('sys/foo').list$()).toEqual([])
-    await expect(unknown.entity('sys/foo').save$({ x: 2 }))
-      .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
+    expect(await unknown.entity('sys/foo').load$('any-id')).to.equal(null)
+    expect(await unknown.entity('sys/foo').list$()).to.equal([])
+    await rejects(unknown.entity('sys/foo').save$({ x: 2 }), { code: 'role-entity-not-allowed' })
   })
 })

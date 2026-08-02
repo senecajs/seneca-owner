@@ -1,6 +1,10 @@
 /* Copyright (c) 2018-2023 voxgig and other contributors, MIT License */
 'use strict'
 
+const { describe, test } = require('node:test')
+const { expect } = require('@hapi/code')
+const { partial } = require('./helper')
+
 const Util = require('util')
 
 const Seneca = require('seneca')
@@ -97,11 +101,11 @@ function make_bar_instance(fin, spec, explain) {
 
 describe('owner', function () {
 
-  test('happy', (fin) => {
+  test('happy', (t, fin) => {
     make_bar_instance(fin).ready(function () {
       this.act('role:foo,add:bar', function (err, out) {
-        expect(out.usr).toEqual('alice')
-        expect(out.org).toEqual('wonderland')
+        expect(out.usr).to.equal('alice')
+        expect(out.org).to.equal('wonderland')
         fin()
       })
     })
@@ -109,15 +113,15 @@ describe('owner', function () {
 
   // NEXT: bob can read public alice owned entity
 
-  test('spec-load-basic', (fin) => {
+  test('spec-load-basic', (t, fin) => {
     make_bar_instance(fin).ready(function () {
 
       
       
       this.act('role:foo,add:bar', function (err, out) {
         this.act('role:foo,load:bar', { id: out.id }, function (err, out) {
-          expect(out.usr).toEqual('alice')
-          expect(out.org).toEqual('wonderland')
+          expect(out.usr).to.equal('alice')
+          expect(out.org).to.equal('wonderland')
 
           var bob_instance = this.root.delegate(null, {
             custom: {
@@ -133,7 +137,7 @@ describe('owner', function () {
             'role:foo,load:bar',
             { id: out.id },
             function (err, out) {
-              expect(out).toEqual(null)
+              expect(out).to.equal(null)
               fin(err)
             }
           )
@@ -142,7 +146,7 @@ describe('owner', function () {
     })
   })
 
-  test('spec-load-field-match', (fin) => {
+  test('spec-load-field-match', (t, fin) => {
     var tmp = {}
 
     // w can have multiple values
@@ -186,8 +190,8 @@ describe('owner', function () {
           'role:foo,add:bar',
           { data: { d: 4, w: 3 } },
           function (err, bar4) {
-            expect(err).toBeDefined()
-            expect(err.code).toEqual('create-not-allowed')
+            expect(err).to.exist()
+            expect(err.code).to.equal('create-not-allowed')
           }
         )
         .ready(function () {
@@ -195,20 +199,20 @@ describe('owner', function () {
 
             .act('role:foo,load:bar', { id: tmp.bar1.id }, function (err, out) {
               if (err) return fin(err)
-              expect(out).toBeDefined()
-              expect(out.w).toEqual(null)
+              expect(out).to.exist()
+              expect(out.w).to.equal(null)
             })
 
             .act('role:foo,load:bar', { id: tmp.bar2.id }, function (err, out) {
               if (err) return fin(err)
-              expect(out).toBeDefined()
-              expect(out.w).toEqual(1)
+              expect(out).to.exist()
+              expect(out.w).to.equal(1)
             })
 
             .act('role:foo,load:bar', { id: tmp.bar3.id }, function (err, out) {
               if (err) return fin(err)
-              expect(out).toBeDefined()
-              expect(out.w).toEqual(2)
+              expect(out).to.exist()
+              expect(out.w).to.equal(2)
             })
 
             .ready(fin)
@@ -216,7 +220,7 @@ describe('owner', function () {
     })
   })
 
-  test('spec-load-field-match', (fin) => {
+  test('spec-load-field-match', (t, fin) => {
     var tmp = {}
 
     // w is only for reads, s for all modes, expect write
@@ -266,17 +270,17 @@ describe('owner', function () {
 
             // w=1,s=3 => can read
             .act('role:foo,load:bar', { id: tmp.bar1.id }, function (err, out) {
-              expect(out.w).toEqual(1)
+              expect(out.w).to.equal(1)
             })
 
             // w=2,s=3 => can't read
             .act('role:foo,load:bar', { id: tmp.bar2.id }, function (err, out) {
-              expect(out).toEqual(null)
+              expect(out).to.equal(null)
             })
 
             // w=1,s=4 => can't read
             .act('role:foo,load:bar', { id: tmp.bar3.id }, function (err, out) {
-              expect(out).toEqual(null)
+              expect(out).to.equal(null)
             })
 
             .ready(fin)
@@ -284,15 +288,15 @@ describe('owner', function () {
     })
   })
 
-  test('spec-load-org', (fin) => {
+  test('spec-load-org', (t, fin) => {
     make_bar_instance(fin, {
       read: { usr: false },
       write: { usr: false },
     }).ready(function () {
       this.act('role:foo,add:bar', { data: { w: 1 } }, function (err, out) {
         this.act('role:foo,load:bar', { id: out.id }, function (err, out) {
-          expect(out.usr).toEqual('alice')
-          expect(out.org).toEqual('wonderland')
+          expect(out.usr).to.equal('alice')
+          expect(out.org).to.equal('wonderland')
 
           var bob_instance = this.root.delegate(null, {
             custom: {
@@ -308,8 +312,8 @@ describe('owner', function () {
             'role:foo,load:bar',
             { id: out.id },
             function (err, out) {
-              expect(out.usr).toEqual('alice')
-              expect(out.org).toEqual('wonderland')
+              expect(out.usr).to.equal('alice')
+              expect(out.org).to.equal('wonderland')
 
               fin()
             }
@@ -319,12 +323,12 @@ describe('owner', function () {
     })
   })
 
-  test('spec-load-admin', (fin) => {
+  test('spec-load-admin', (t, fin) => {
     make_bar_instance(fin).ready(function () {
       this.act('role:foo,add:bar', function (err, out) {
         this.act('role:foo,load:bar', { id: out.id }, function (err, out) {
-          expect(out.usr).toEqual('alice')
-          expect(out.org).toEqual('wonderland')
+          expect(out.usr).to.equal('alice')
+          expect(out.org).to.equal('wonderland')
 
           var admin_instance = this.root.delegate(null, {
             custom: {
@@ -341,9 +345,9 @@ describe('owner', function () {
             'role:foo,load:bar',
             { y: 1, id: out.id },
             function (err, out) {
-              expect(out).toBeDefined()
-              expect(out.usr).toEqual('alice')
-              expect(out.org).toEqual('wonderland')
+              expect(out).to.exist()
+              expect(out.usr).to.equal('alice')
+              expect(out.org).to.equal('wonderland')
               fin()
             }
           )
@@ -352,55 +356,55 @@ describe('owner', function () {
     })
   })
 
-  test('spec-inject-no-usr', (fin) => {
+  test('spec-inject-no-usr', (t, fin) => {
     var spec = { inject: { usr: false } }
     make_bar_instance(fin, spec).ready(function () {
       this.act('role:foo,add:bar', function (err, out) {
-        expect(err).toEqual(null)
-        expect(out.usr).toEqual(undefined)
-        expect(out.org).toEqual('wonderland')
+        expect(err).to.equal(null)
+        expect(out.usr).to.equal(undefined)
+        expect(out.org).to.equal('wonderland')
         fin()
       })
     })
   })
 
-  test('spec-inject-no-org', (fin) => {
+  test('spec-inject-no-org', (t, fin) => {
     var spec = { inject: { org: false } }
     make_bar_instance(fin, spec).ready(function () {
       this.act('role:foo,add:bar', function (err, out) {
-        expect(err).toEqual(null)
-        expect(out.usr).toEqual('alice')
-        expect(out.org).toEqual(undefined)
+        expect(err).to.equal(null)
+        expect(out.usr).to.equal('alice')
+        expect(out.org).to.equal(undefined)
         fin()
       })
     })
   })
 
-  test('spec-inject-no-usr-org', (fin) => {
+  test('spec-inject-no-usr-org', (t, fin) => {
     var spec = { inject: { usr: false, org: false } }
     make_bar_instance(fin, spec).ready(function () {
       this.act('role:foo,add:bar', function (err, out) {
-        expect(err).toEqual(null)
-        expect(out.usr).toEqual(undefined)
-        expect(out.org).toEqual(undefined)
+        expect(err).to.equal(null)
+        expect(out.usr).to.equal(undefined)
+        expect(out.org).to.equal(undefined)
         fin()
       })
     })
   })
 
-  test('spec-inject-undef', (fin) => {
+  test('spec-inject-undef', (t, fin) => {
     var spec = { inject: { zed: true } }
     make_bar_instance(fin, spec).ready(function () {
       this.act('role:foo,add:bar', function (err, out) {
-        expect(out.usr).toEqual('alice')
-        expect(out.org).toEqual('wonderland')
-        expect(out.zed).toEqual(undefined)
+        expect(out.usr).to.equal('alice')
+        expect(out.org).to.equal('wonderland')
+        expect(out.zed).to.equal(undefined)
         fin()
       })
     })
   })
 
-  test('org-scenario', (fin) => {
+  test('org-scenario', (t, fin) => {
     // grp0 fields assigns entity to group, but group is not checked by default
     var spec = {
       // require group match by default
@@ -578,31 +582,31 @@ describe('owner', function () {
         })
 
         function validate() {
-          expect(tmp.d0).toMatchObject({
+          partial(tmp.d0, {
             d: 0,
             usr: 'alice',
             org: 'org0',
             grp0: 'staff',
           })
-          expect(tmp.d1).toMatchObject({
+          partial(tmp.d1, {
             d: 1,
             usr: 'frank',
             org: 'org0',
             grp0: 'helper',
           })
-          expect(tmp.d2).toMatchObject({
+          partial(tmp.d2, {
             d: 2,
             usr: 'imogen',
             org: 'org0',
             grp0: 'helper',
           })
-          expect(tmp.d3).toMatchObject({
+          partial(tmp.d3, {
             d: 3,
             usr: 'derek',
             org: 'org1',
             grp0: 'staff',
           })
-          expect(tmp.d4).toMatchObject({
+          partial(tmp.d4, {
             d: 4,
             usr: 'cathy',
             org: 'org0',
@@ -851,7 +855,7 @@ describe('owner', function () {
 
 
   /* TODO: review
-  test('group-scenario', (fin) => {
+  test('group-scenario', (t, fin) => {
     var spec = {
       fields: ['group'],
     }
@@ -1062,40 +1066,40 @@ describe('owner', function () {
         function validate() {
           console.log('group-validate')
           
-          expect(tmp.d0).toMatchObject({
+          partial(tmp.d0, {
             d: 0,
             group: 'staff',
             org: 'org0',
             usr: 'alice',
           })
 
-          expect(tmp.d1).toMatchObject({
+          partial(tmp.d1, {
             d: 1,
             group: 'helper',
             org: 'org0',
             usr: 'frank',
           })
-          expect(tmp.d5).toMatchObject({
+          partial(tmp.d5, {
             d: 5,
             group: null,
             org: 'org0',
             usr: 'frank',
           })
 
-          expect(tmp.d2).toMatchObject({
+          partial(tmp.d2, {
             d: 2,
             group: 'helper',
             org: 'org0',
             usr: 'imogen',
           })
-          expect(tmp.d7).toMatchObject({
+          partial(tmp.d7, {
             d: 7,
             group: null,
             org: 'org0',
             usr: 'imogen',
           })
 
-          expect(tmp.d4).toMatchObject({
+          partial(tmp.d4, {
             d: 4,
             group: 'admin',
             org: 'org0',
@@ -1169,7 +1173,7 @@ describe('owner', function () {
                   d999.save$(function (err) {
                     console.log('QQQ', err)
                     
-                    expect(err.code).toEqual('save-not-found')
+                    expect(err.code).to.equal('save-not-found')
                     done()
                   })
                 })
@@ -1426,7 +1430,7 @@ describe('owner', function () {
                     delete out.core.bar[id].x
                   })
 
-                  expect(out).toMatchObject({
+                  partial(out, {
                     core: {
                       bar: {
                         d0: {
@@ -1547,7 +1551,7 @@ describe('owner', function () {
                 )
 
                 .act('role:mem-store,cmd:dump', function (err, out) {
-                  expect(out).toMatchObject({
+                  partial(out, {
                     core: {
                       bar: {
                         d0: {
@@ -1586,25 +1590,25 @@ describe('owner', function () {
   })
   */
   
-  test('intern', (fin) => {
+  test('intern', (t, fin) => {
     Seneca({ legacy: false })
       .test(fin)
       .use(Plugin)
       .ready(function () {
 
         var spec0 = Plugin.intern.make_spec({ write: { usr: true, org: false } })
-        expect(spec0).toMatchObject({ write: { usr: true, org: false } })
+        partial(spec0, { write: { usr: true, org: false } })
 
-        expect(Plugin.intern.match('a', 'a')).toEqual(true)
-        expect(Plugin.intern.match('a', 'b')).toEqual(false)
-        expect(Plugin.intern.match(null, 'a')).toEqual(false)
-        expect(Plugin.intern.match([], 'a')).toEqual(false)
-        expect(Plugin.intern.match(['a'], 'a')).toEqual(true)
-        expect(Plugin.intern.match(['a'], null)).toEqual(false)
-        expect(Plugin.intern.match(['a', 'x'], 'a')).toEqual(true)
-        expect(Plugin.intern.match(['x', 'a'], 'a')).toEqual(true)
-        expect(Plugin.intern.match(['x', 'a'], 'b')).toEqual(false)
-        expect(Plugin.intern.match(['x', 'a'], null)).toEqual(false)
+        expect(Plugin.intern.match('a', 'a')).to.equal(true)
+        expect(Plugin.intern.match('a', 'b')).to.equal(false)
+        expect(Plugin.intern.match(null, 'a')).to.equal(false)
+        expect(Plugin.intern.match([], 'a')).to.equal(false)
+        expect(Plugin.intern.match(['a'], 'a')).to.equal(true)
+        expect(Plugin.intern.match(['a'], null)).to.equal(false)
+        expect(Plugin.intern.match(['a', 'x'], 'a')).to.equal(true)
+        expect(Plugin.intern.match(['x', 'a'], 'a')).to.equal(true)
+        expect(Plugin.intern.match(['x', 'a'], 'b')).to.equal(false)
+        expect(Plugin.intern.match(['x', 'a'], null)).to.equal(false)
 
         fin()
       })
@@ -1615,15 +1619,15 @@ describe('owner', function () {
 function allowed(mark, data) {
   return function (err, out) {
     //console.log('ALLOWED '+mark)
-    expect(err).toEqual(null)
+    expect(err).to.equal(null)
 
     if (null !== data) {
-      expect(out).toBeDefined()
+      expect(out).to.exist()
 
       if ('string' === typeof data) {
-        expect(out.map((x) => '' + x.d).join('')).toEqual(data)
+        expect(out.map((x) => '' + x.d).join('')).to.equal(data)
       } else {
-        expect(out).toMatchObject(data)
+        partial(out, data)
       }
     }
   }
@@ -1632,9 +1636,9 @@ function allowed(mark, data) {
 function denied(mark, err_code) {
   return function (err, out) {
     // console.log('DENIED  '+mark)
-    expect(out).toEqual(null)
+    expect(out).to.equal(null)
     if (err_code) {
-      expect(err.code).toEqual(err_code)
+      expect(err.code).to.equal(err_code)
     }
   }
 }
