@@ -36,11 +36,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
           registry-url: 'https://registry.npmjs.org'
 
       - name: install
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: build
         run: npm run build
@@ -81,8 +80,22 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: npm publish --access public --dry-run
 
+      # A PRERELEASE tag (v1.2.3-rc1) must publish under its own dist-tag.
+      # Without --tag npm uses `latest`, which would point every plain
+      # `npm i` at an unstable build; npm 11 refuses outright. The tag
+      # trigger accepts prereleases, so this has to be derived, not assumed.
+      - name: derive dist-tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VER=${GITHUB_REF_NAME#v}
+          case "$VER" in
+            *-*) echo "NPM_DIST_TAG=next" >> "$GITHUB_ENV" ;;
+            *)   echo "NPM_DIST_TAG=latest" >> "$GITHUB_ENV" ;;
+          esac
+          echo "publishing $VER under dist-tag ${NPM_DIST_TAG:-(see above)}"
+
       - name: publish
         if: startsWith(github.ref, 'refs/tags/v')
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --tag "$NPM_DIST_TAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
