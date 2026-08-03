@@ -1,10 +1,16 @@
 name: build
 
+# This repo's default branch is `master`. The filters below listed only
+# `main`, so NO pull request ever ran this workflow and no push to master
+# did either — the suite has been effectively off. The only check landing
+# on a PR was the TODO workflow, which triggers on any push and is
+# currently failing repo-wide on an unrelated action bug, so the repo
+# looked like it had CI while running no tests at all.
 on:
   push:
-    branches: [main]
+    branches: [master, main]
   pull_request:
-    branches: [main]
+    branches: [master, main]
 
 jobs:
   build:
