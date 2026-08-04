@@ -4,12 +4,14 @@
 const { describe, test } = require('node:test')
 const { expect } = require('@hapi/code')
 
+const { LOG } = require('./helper')
+
 const Seneca = require('seneca')
 
 const build_roles = require('../dist/build_roles').build_roles
 
 // Exercise build_roles with the real seneca deps, no full plugin/entity stack.
-const s0 = Seneca({ legacy: false }).test()
+const s0 = Seneca({ legacy: false }).test(LOG)
 
 const deps = {
   deep: s0.util.deepextend,

@@ -3,7 +3,7 @@
 
 const { describe, test } = require('node:test')
 const { expect } = require('@hapi/code')
-const { partial } = require('./helper')
+const { LOG, partial } = require('./helper')
 
 const Seneca = require('seneca')
 const Plugin = require('..')
@@ -16,7 +16,7 @@ describe('tenant-key', () => {
 
   test('custom-tenant-key-isolates-tenants', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -61,7 +61,7 @@ describe('tenant-key', () => {
   test('default-preset-roles-bound-to-custom-tenant-key', async () => {
     // No roles declared: built-in presets apply, but the tenant axis is tenant_id.
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -102,7 +102,7 @@ describe('tenant-key', () => {
     // Custom labels with a declared member baseline: `bar` inherits member's
     // wildcard grant. Tenant axis is tenant_id, so baz scopes to it.
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {

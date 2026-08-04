@@ -4,6 +4,8 @@
 const { describe, test } = require('node:test')
 const { expect } = require('@hapi/code')
 
+const { LOG } = require('./helper')
+
 const Seneca = require('seneca')
 const Plugin = require('..')
 
@@ -15,7 +17,7 @@ const Plugin = require('..')
 
 function makeSeneca(opts) {
   return Seneca({ legacy: false })
-    .test()
+    .test(LOG)
     .use('promisify')
     .use('entity')
     .use(Plugin, opts)

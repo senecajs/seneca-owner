@@ -3,7 +3,7 @@
 
 const { describe, test } = require('node:test')
 const { expect } = require('@hapi/code')
-const { partial } = require('./helper')
+const { LOG, partial } = require('./helper')
 
 const Util = require('util')
 
@@ -14,9 +14,7 @@ function make_bar_instance(fin, spec, explain) {
   spec = spec || {}
   return (
     Seneca({ legacy: false })
-      // turn off quiet to see errors
-      .test(fin)
-      .quiet()
+      .test(fin, LOG)
       .use('entity')
       .use(Plugin, {
         explain: explain,
@@ -1592,7 +1590,7 @@ describe('owner', function () {
   
   test('intern', (t, fin) => {
     Seneca({ legacy: false })
-      .test(fin)
+      .test(fin, LOG)
       .use(Plugin)
       .ready(function () {
 

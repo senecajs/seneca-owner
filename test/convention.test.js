@@ -3,7 +3,7 @@
 
 const { describe, test } = require('node:test')
 const { expect } = require('@hapi/code')
-const { partial, rejects } = require('./helper')
+const { LOG, partial, rejects } = require('./helper')
 
 const Seneca = require('seneca')
 const Plugin = require('..')
@@ -13,7 +13,7 @@ const Plugin = require('..')
 
 const build = (roles) =>
   Seneca({ legacy: false })
-    .test()
+    .test(LOG)
     .use('promisify')
     .use('entity')
     .use(Plugin, {

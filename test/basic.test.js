@@ -4,15 +4,14 @@
 const Util = require('util')
 const { describe, test } = require('node:test')
 const { expect } = require('@hapi/code')
-const { partial } = require('./helper')
+const { LOG, partial } = require('./helper')
 
 const Seneca = require('seneca')
 const Plugin = require('..')
 
 function makeSeneca() {
   return Seneca({ legacy: false })
-    .test()
-  // .quiet()
+    .test(LOG)
     .use('promisify')
     .use('entity')
     .use(Plugin, {

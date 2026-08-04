@@ -3,7 +3,7 @@
 
 const { describe, test } = require('node:test')
 const { expect } = require('@hapi/code')
-const { partial, rejects } = require('./helper')
+const { LOG, partial, rejects } = require('./helper')
 
 const Seneca = require('seneca')
 const Plugin = require('..')
@@ -12,7 +12,7 @@ describe('role', () => {
 
   test('member-sees-own-rows-only', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -45,7 +45,7 @@ describe('role', () => {
 
   test('admin-sees-across-owners', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -76,7 +76,7 @@ describe('role', () => {
 
   test('undeclared-entity-is-denied', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -105,7 +105,7 @@ describe('role', () => {
 
   test('read-only-grant-blocks-write', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -134,7 +134,7 @@ describe('role', () => {
 
   test('op-gate-allows-save-but-denies-remove', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -163,7 +163,7 @@ describe('role', () => {
 
   test('per-entity-grant-relaxes-owner-field', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -206,7 +206,7 @@ describe('role', () => {
 
   test('no-roles-uses-default-preset', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -233,7 +233,7 @@ describe('role', () => {
 
   test('wildcard-grant-gets-full-access', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -271,7 +271,7 @@ describe('role', () => {
 
   test('no-roles-is-plain-ownership', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -298,7 +298,7 @@ describe('role', () => {
   test('explicit-unknown-role-denied-not-default', async () => {
     // An explicit unknown role must deny; only an absent role uses defaultRole.
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -331,7 +331,7 @@ describe('role', () => {
 
   test('defaultRole-null-denies-unknown-role', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
