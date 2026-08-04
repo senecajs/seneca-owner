@@ -3,7 +3,7 @@
 
 const { describe, test } = require('node:test')
 const { expect } = require('@hapi/code')
-const { partial } = require('./helper')
+const { LOG, partial } = require('./helper')
 
 const Util = require('util')
 
@@ -13,7 +13,7 @@ const Seneca = require('seneca')
 const intern = require('../dist/Owner.js').intern
 const refine_query = require('../dist/refine_query').refine_query
 
-const s0 = Seneca({ legacy: false }).test().use('promisify')
+const s0 = Seneca({ legacy: false }).test(LOG).use('promisify')
 const qp0 = 'q'
 
 describe('refine_query', function () {

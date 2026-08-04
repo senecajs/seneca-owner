@@ -3,7 +3,7 @@
 
 const { describe, test } = require('node:test')
 const { expect } = require('@hapi/code')
-const { partial } = require('./helper')
+const { LOG, partial } = require('./helper')
 
 const Seneca = require('seneca')
 const Plugin = require('..')
@@ -16,7 +16,7 @@ describe('default-roles', () => {
 
   test('member-default-is-wildcard-but-owner-and-tenant-bounded', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -53,7 +53,7 @@ describe('default-roles', () => {
 
   test('admin-default-reads-whole-tenant-but-never-crosses-it', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {

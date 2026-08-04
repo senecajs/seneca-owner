@@ -3,7 +3,7 @@
 
 const { describe, test } = require('node:test')
 const { expect } = require('@hapi/code')
-const { partial, rejects } = require('./helper')
+const { LOG, partial, rejects } = require('./helper')
 
 const Seneca = require('seneca')
 const Plugin = require('..')
@@ -20,7 +20,7 @@ describe('hierarchy', () => {
 
   test('senior-role-inherits-junior-permissions', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -69,7 +69,7 @@ describe('hierarchy', () => {
 
   test('senior-sees-junior-rows-within-org', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
@@ -105,7 +105,7 @@ describe('hierarchy', () => {
 
   test('org-scope-isolates-tenants', async () => {
     const s0 = await Seneca({ legacy: false })
-      .test()
+      .test(LOG)
       .use('promisify')
       .use('entity')
       .use(Plugin, {
