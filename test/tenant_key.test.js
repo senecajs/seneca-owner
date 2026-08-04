@@ -1,6 +1,10 @@
 /* Copyright (c) 2018-2026 voxgig and other contributors, MIT License */
 'use strict'
 
+const { describe, test } = require('node:test')
+const { expect } = require('@hapi/code')
+const { partial } = require('./helper')
+
 const Seneca = require('seneca')
 const Plugin = require('..')
 
@@ -38,20 +42,19 @@ describe('tenant-key', () => {
 
     // save stamps the custom tenant field, not org_id
     const noteA = await memberA.entity('sys/note').save$({ x: 1 })
-    expect(noteA).toMatchObject({ x: 1, owner_id: 'u0', tenant_id: 'A' })
-    expect(noteA.org_id).toBeUndefined()
+    partial(noteA, { x: 1, owner_id: 'u0', tenant_id: 'A' })
+    expect(noteA.org_id).to.equal(undefined)
 
     const noteB = await memberB.entity('sys/note').save$({ x: 2 })
 
     // scope:'tenant_id' relaxes only the owner axis: admin sees a peer's row
     // within its own tenant, but the custom tenant axis still bounds it.
-    expect(await adminA.entity('sys/note').load$(noteA.id))
-      .toMatchObject({ id: noteA.id, owner_id: 'u0', tenant_id: 'A' })
-    expect(await adminA.entity('sys/note').load$(noteB.id)).toEqual(null)
+    partial(await adminA.entity('sys/note').load$(noteA.id), { id: noteA.id, owner_id: 'u0', tenant_id: 'A' })
+    expect(await adminA.entity('sys/note').load$(noteB.id)).to.equal(null)
 
     const listA = await adminA.entity('sys/note').list$()
-    expect(listA.every((r) => r.tenant_id === 'A')).toBe(true)
-    expect(listA.find((r) => r.id === noteB.id)).toBeUndefined()
+    expect(listA.every((r) => r.tenant_id === 'A')).to.equal(true)
+    expect(listA.find((r) => r.id === noteB.id)).to.equal(undefined)
   })
 
 
@@ -83,16 +86,15 @@ describe('tenant-key', () => {
 
     // default member is wildcard: own rows on any entity, stamped with tenant_id
     const note = await memberA.entity('qux/zed').save$({ x: 1 })
-    expect(note).toMatchObject({ owner_id: 'u0', tenant_id: 'A' })
-    expect(note.org_id).toBeUndefined()
+    partial(note, { owner_id: 'u0', tenant_id: 'A' })
+    expect(note.org_id).to.equal(undefined)
 
     // owner + tenant axes enforced against the custom key
-    expect(await memberB.entity('qux/zed').load$(note.id)).toEqual(null)
+    expect(await memberB.entity('qux/zed').load$(note.id)).to.equal(null)
 
     // admin reads across users within its tenant, never crossing tenant_id
-    expect(await adminA.entity('qux/zed').load$(note.id))
-      .toMatchObject({ id: note.id, tenant_id: 'A' })
-    expect(await adminB.entity('qux/zed').load$(note.id)).toEqual(null)
+    partial(await adminA.entity('qux/zed').load$(note.id), { id: note.id, tenant_id: 'A' })
+    expect(await adminB.entity('qux/zed').load$(note.id)).to.equal(null)
   })
 
 
@@ -127,14 +129,13 @@ describe('tenant-key', () => {
 
     // bar: own grant + explicit member inheritance, tenant-bound
     const doc = await barA.entity('foo/doc').save$({ x: 1 })
-    expect(doc).toMatchObject({ owner_id: 'u0', tenant_id: 'A' })
+    partial(doc, { owner_id: 'u0', tenant_id: 'A' })
     const misc = await barA.entity('qux/zed').save$({ x: 2 })
-    expect(misc).toMatchObject({ owner_id: 'u0', tenant_id: 'A' })
+    partial(misc, { owner_id: 'u0', tenant_id: 'A' })
 
     // baz (scope:'tenant_id', wildcard): reads across users in its tenant only
-    expect(await bazA.entity('foo/doc').load$(doc.id))
-      .toMatchObject({ id: doc.id, tenant_id: 'A' })
+    partial(await bazA.entity('foo/doc').load$(doc.id), { id: doc.id, tenant_id: 'A' })
     // never crosses the custom tenant axis
-    expect(await bazB.entity('foo/doc').load$(doc.id)).toEqual(null)
+    expect(await bazB.entity('foo/doc').load$(doc.id)).to.equal(null)
   })
 })

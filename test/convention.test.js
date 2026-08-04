@@ -1,6 +1,10 @@
 /* Copyright (c) 2018-2026 voxgig and other contributors, MIT License */
 'use strict'
 
+const { describe, test } = require('node:test')
+const { expect } = require('@hapi/code')
+const { partial, rejects } = require('./helper')
+
 const Seneca = require('seneca')
 const Plugin = require('..')
 
@@ -38,17 +42,16 @@ describe('convention', () => {
     const oA = as(s0, 'o0', 'A', 'admin')   // undeclared
 
     const note = await gA.entity('sys/note').save$({ x: 1 })
-    expect(note).toMatchObject({ owner_id: 'g0', org_id: 'A' })
+    partial(note, { owner_id: 'g0', org_id: 'A' })
 
     // manager reads across owners in its org, still bounded by org_id.
-    expect(await gA.entity('sys/note').load$(note.id)).toMatchObject({ id: note.id })
-    expect(await gB.entity('sys/note').load$(note.id)).toEqual(null)
+    partial(await gA.entity('sys/note').load$(note.id), { id: note.id })
+    expect(await gB.entity('sys/note').load$(note.id)).to.equal(null)
 
     // member and admin are not declared, so they get no preset: denied.
     for (const actor of [mA, oA]) {
-      expect(await actor.entity('sys/note').load$(note.id)).toEqual(null)
-      await expect(actor.entity('sys/note').save$({ x: 2 }))
-        .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
+      expect(await actor.entity('sys/note').load$(note.id)).to.equal(null)
+      await rejects(actor.entity('sys/note').save$({ x: 2 }), { code: 'role-entity-not-allowed' })
     }
   })
 
@@ -74,29 +77,26 @@ describe('convention', () => {
 
     // happy: admin writes billing; support and admin read tickets across the org.
     const bill = await oA.entity('sys/billing').save$({ amount: 10 })
-    expect(bill).toMatchObject({ owner_id: 'o0', org_id: 'A' })
-    expect(await sA.entity('sys/ticket').load$(tA.id)).toMatchObject({ id: tA.id })
-    expect(await oA.entity('sys/ticket').load$(tA.id)).toMatchObject({ id: tA.id })
+    partial(bill, { owner_id: 'o0', org_id: 'A' })
+    partial(await sA.entity('sys/ticket').load$(tA.id), { id: tA.id })
+    partial(await oA.entity('sys/ticket').load$(tA.id), { id: tA.id })
 
     // denials by ownership / org.
-    expect(await mA1.entity('sys/ticket').load$(tA.id)).toEqual(null)
-    expect(await sB.entity('sys/ticket').load$(tA.id)).toEqual(null)
-    expect(await sA.entity('sys/ticket').load$(tC.id)).toEqual(null)
+    expect(await mA1.entity('sys/ticket').load$(tA.id)).to.equal(null)
+    expect(await sB.entity('sys/ticket').load$(tA.id)).to.equal(null)
+    expect(await sA.entity('sys/ticket').load$(tC.id)).to.equal(null)
 
     // bad actor: member and support cannot reach the admin-only billing entity.
-    await expect(mA0.entity('sys/billing').save$({ amount: 1 }))
-      .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
-    await expect(sA.entity('sys/billing').save$({ amount: 1 }))
-      .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
+    await rejects(mA0.entity('sys/billing').save$({ amount: 1 }), { code: 'role-entity-not-allowed' })
+    await rejects(sA.entity('sys/billing').save$({ amount: 1 }), { code: 'role-entity-not-allowed' })
 
     // bad actor: an entity granted to no role is denied for everyone.
     for (const actor of [mA0, sA, oA]) {
-      expect(await actor.entity('sys/secret').load$('any-id')).toEqual(null)
-      await expect(actor.entity('sys/secret').save$({ z: 1 }))
-        .rejects.toMatchObject({ code: 'role-entity-not-allowed' })
+      expect(await actor.entity('sys/secret').load$('any-id')).to.equal(null)
+      await rejects(actor.entity('sys/secret').save$({ z: 1 }), { code: 'role-entity-not-allowed' })
     }
 
     const listSA = await sA.entity('sys/ticket').list$()
-    expect(listSA.every((r) => r.org_id === 'A')).toBe(true)
+    expect(listSA.every((r) => r.org_id === 'A')).to.equal(true)
   })
 })

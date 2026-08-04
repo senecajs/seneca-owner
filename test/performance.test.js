@@ -1,6 +1,9 @@
 /* Copyright (c) 2018-2026 voxgig and other contributors, MIT License */
 'use strict'
 
+const { describe, test } = require('node:test')
+const { expect } = require('@hapi/code')
+
 const Seneca = require('seneca')
 const Plugin = require('..')
 
@@ -45,9 +48,7 @@ const roles = {
 }
 
 describe('performance', () => {
-  jest.setTimeout(120000)
-
-  test('role-gate-overhead-stays-bounded-on-large-table', async () => {
+  test('role-gate-overhead-stays-bounded-on-large-table', { timeout: 120000 }, async () => {
     const owners = 100
     const rowsPerOwner = 20 // 2000 rows total
 
@@ -72,8 +73,8 @@ describe('performance', () => {
 
     // correctness under load: role-scoped list still returns own rows only
     const own = await member.entity('sys/doc').list$()
-    expect(own.length).toBe(rowsPerOwner)
-    expect(own.every((r) => r.owner_id === 'u0')).toBe(true)
+    expect(own.length).to.equal(rowsPerOwner)
+    expect(own.every((r) => r.owner_id === 'u0')).to.equal(true)
 
     const opCount = 200
 
@@ -102,11 +103,11 @@ describe('performance', () => {
       ` (${owners * rowsPerOwner} rows, ${opCount} ops)`
     )
 
-    expect(overheadRatio).toBeLessThan(maxOverheadRatio)
+    expect(overheadRatio).to.be.below(maxOverheadRatio)
   })
 
 
-  test('point-load-under-role-gate-is-fast-on-large-table', async () => {
+  test('point-load-under-role-gate-is-fast-on-large-table', { timeout: 120000 }, async () => {
     const owners = 100
     const rowsPerOwner = 20
 
@@ -128,7 +129,7 @@ describe('performance', () => {
 
     for (let op = 0; op < opCount; op++) {
       const row = await member.entity('sys/doc').load$(seedRow.id)
-      expect(row.owner_id).toBe('u0')
+      expect(row.owner_id).to.equal('u0')
     }
 
     const msPerOp = (Date.now() - startMs) / opCount
@@ -137,6 +138,6 @@ describe('performance', () => {
     console.log(`perf load$: ${msPerOp.toFixed(3)}ms/op (${owners * rowsPerOwner} rows, ${opCount} ops)`)
 
     // generous ceiling: point loads should not degrade with table size
-    expect(msPerOp).toBeLessThan(maxMsPerOp)
+    expect(msPerOp).to.be.below(maxMsPerOp)
   })
 })

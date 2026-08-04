@@ -1,6 +1,9 @@
 /* Copyright (c) 2018-2026 voxgig and other contributors, MIT License */
 'use strict'
 
+const { describe, test } = require('node:test')
+const { expect } = require('@hapi/code')
+
 const Seneca = require('seneca')
 
 const build_roles = require('../dist/build_roles').build_roles
@@ -38,12 +41,12 @@ describe('build_roles', () => {
     })
 
     // editor has no inherits: only its own grant, no member baseline.
-    expect(grantFor(compiled, 'editor', 'sys', 'doc')).toEqual(ALL)
-    expect(grantFor(compiled, 'editor', 'sys', 'note')).toEqual(null)
+    expect(grantFor(compiled, 'editor', 'sys', 'doc')).to.equal(ALL)
+    expect(grantFor(compiled, 'editor', 'sys', 'note')).to.equal(null)
 
     // member has only its own grant.
-    expect(grantFor(compiled, 'member', 'sys', 'note')).toEqual(ALL)
-    expect(grantFor(compiled, 'member', 'sys', 'doc')).toEqual(null)
+    expect(grantFor(compiled, 'member', 'sys', 'note')).to.equal(ALL)
+    expect(grantFor(compiled, 'member', 'sys', 'doc')).to.equal(null)
   })
 
 
@@ -53,8 +56,8 @@ describe('build_roles', () => {
       editor: { inherits: ['member'], grants: [{ entity: 'sys/doc' }] }
     })
 
-    expect(grantFor(compiled, 'editor', 'sys', 'doc')).toEqual(ALL)
-    expect(grantFor(compiled, 'editor', 'sys', 'note')).toEqual(ALL)
+    expect(grantFor(compiled, 'editor', 'sys', 'doc')).to.equal(ALL)
+    expect(grantFor(compiled, 'editor', 'sys', 'note')).to.equal(ALL)
   })
 
 
@@ -67,10 +70,10 @@ describe('build_roles', () => {
     })
 
     // super = own + editor(+member) + billing(+member): full union, no dupes.
-    expect(grantFor(compiled, 'super', 'sys', 'audit')).toEqual(ALL)
-    expect(grantFor(compiled, 'super', 'sys', 'doc')).toEqual(ALL)
-    expect(grantFor(compiled, 'super', 'sys', 'invoice')).toEqual(ALL)
-    expect(grantFor(compiled, 'super', 'sys', 'note')).toEqual(ALL)
+    expect(grantFor(compiled, 'super', 'sys', 'audit')).to.equal(ALL)
+    expect(grantFor(compiled, 'super', 'sys', 'doc')).to.equal(ALL)
+    expect(grantFor(compiled, 'super', 'sys', 'invoice')).to.equal(ALL)
+    expect(grantFor(compiled, 'super', 'sys', 'note')).to.equal(ALL)
   })
 
 
@@ -81,8 +84,8 @@ describe('build_roles', () => {
     })
 
     // specific sys/doc grant unions the inherited wildcard, not shadows it.
-    expect(grantFor(compiled, 'editor', 'sys', 'doc')).toEqual(['load', 'save'])
-    expect(grantFor(compiled, 'editor', 'sys', 'other')).toEqual(['load'])
+    expect(grantFor(compiled, 'editor', 'sys', 'doc')).to.equal(['load', 'save'])
+    expect(grantFor(compiled, 'editor', 'sys', 'other')).to.equal(['load'])
   })
 
 
@@ -97,8 +100,8 @@ describe('build_roles', () => {
     })
 
     // sys/doc folds in the broader sys/* ops; other sys entities keep them too.
-    expect(grantFor(compiled, 'reader', 'sys', 'doc')).toEqual(['list', 'load', 'save'])
-    expect(grantFor(compiled, 'reader', 'sys', 'note')).toEqual(['list', 'load'])
+    expect(grantFor(compiled, 'reader', 'sys', 'doc')).to.equal(['list', 'load', 'save'])
+    expect(grantFor(compiled, 'reader', 'sys', 'note')).to.equal(['list', 'load'])
   })
 
 
@@ -115,7 +118,7 @@ describe('build_roles', () => {
 
     // sys/doc is covered by both '*' and 'sys/*'; the narrower sys/* spec wins.
     const g = compiled.reader.find({ base: 'sys', name: 'doc' })
-    expect(g.spec.read.owner_id).toBe(false)
+    expect(g.spec.read.owner_id).to.equal(false)
   })
 
 
@@ -127,11 +130,11 @@ describe('build_roles', () => {
     })
 
     // editor and auditor both inherit only member, never each other.
-    expect(grantFor(compiled, 'editor', 'sys', 'log')).toEqual(null)
-    expect(grantFor(compiled, 'auditor', 'sys', 'doc')).toEqual(null)
+    expect(grantFor(compiled, 'editor', 'sys', 'log')).to.equal(null)
+    expect(grantFor(compiled, 'auditor', 'sys', 'doc')).to.equal(null)
 
     // and restricting one does not widen the other
-    expect(grantFor(compiled, 'auditor', 'sys', 'log')).toEqual(['list', 'load'])
+    expect(grantFor(compiled, 'auditor', 'sys', 'log')).to.equal(['list', 'load'])
   })
 
 
@@ -145,10 +148,8 @@ describe('build_roles', () => {
     })
 
     // own fragment applied last: opener relaxes the field member enforced.
-    expect(compiled.opener.find({ base: 'sys', name: 'doc' }).spec.read.owner_id)
-      .toBe(false)
-    expect(compiled.member.find({ base: 'sys', name: 'doc' }).spec.read.owner_id)
-      .toBe(true)
+    expect(compiled.opener.find({ base: 'sys', name: 'doc' }).spec.read.owner_id).to.equal(false)
+    expect(compiled.member.find({ base: 'sys', name: 'doc' }).spec.read.owner_id).to.equal(true)
   })
 
 
@@ -160,12 +161,12 @@ describe('build_roles', () => {
 
     // admin scope relaxes owner_id on inherited grants too...
     const adminNote = compiled.admin.find({ base: 'sys', name: 'note' })
-    expect(adminNote.spec.read.owner_id).toBe(false)
-    expect(adminNote.spec.write.owner_id).toBe(false)
+    expect(adminNote.spec.read.owner_id).to.equal(false)
+    expect(adminNote.spec.write.owner_id).to.equal(false)
 
     // member (no scope) keeps enforcing it.
     const memberNote = compiled.member.find({ base: 'sys', name: 'note' })
-    expect(memberNote.spec.read?.owner_id).not.toBe(false)
+    expect(memberNote.spec.read?.owner_id).to.not.equal(false)
   })
 
 
@@ -173,7 +174,7 @@ describe('build_roles', () => {
     expect(() => compile({
       member: { grants: [{ entity: 'sys/note' }] },
       admin: { scope: 'nope', grants: [{ entity: '*' }] }
-    })).toThrow(/role-scope-unknown/)
+    })).to.throw(/role-scope-unknown/)
   })
 
 
@@ -185,10 +186,10 @@ describe('build_roles', () => {
 
     // scope:'org_id' relaxes the owner axis but keeps the tenant axis enforced.
     const g = compiled.admin.find({ base: 'sys', name: 'note' })
-    expect(g.spec.read.owner_id).toBe(false)
-    expect(g.spec.write.owner_id).toBe(false)
-    expect(g.spec.read).not.toHaveProperty('org_id', false)
-    expect(g.spec.write).not.toHaveProperty('org_id', false)
+    expect(g.spec.read.owner_id).to.equal(false)
+    expect(g.spec.write.owner_id).to.equal(false)
+    expect(g.spec.read.org_id).to.not.equal(false)
+    expect(g.spec.write.org_id).to.not.equal(false)
   })
 
 
@@ -197,7 +198,7 @@ describe('build_roles', () => {
       member: { grants: [{ entity: 'sys/note' }] },
       a: { inherits: ['b'], grants: [] },
       b: { inherits: ['a'], grants: [] }
-    })).toThrow(/role-inherit-cycle/)
+    })).to.throw(/role-inherit-cycle/)
   })
 
 
@@ -205,6 +206,6 @@ describe('build_roles', () => {
     expect(() => compile({
       member: { grants: [{ entity: 'sys/note' }] },
       editor: { inherits: ['ghost'], grants: [{ entity: 'sys/doc' }] }
-    })).toThrow(/role-inherit-unknown/)
+    })).to.throw(/role-inherit-unknown/)
   })
 })
