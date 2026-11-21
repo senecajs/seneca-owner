@@ -3,7 +3,7 @@
 'use strict'
 
 
-import { Shape, Open, Any, Skip } from 'shape'
+import type Seneca from 'seneca'
 
 import { refine_query } from './refine_query'
 import { build_roles, axisName, default_roles, CompiledRoles } from './build_roles'
@@ -11,32 +11,34 @@ import { build_roles, axisName, default_roles, CompiledRoles } from './build_rol
 /* $lab:coverage:on$ */
 
 
-const defaults = {
+// Default options, built with the validator that Seneca passes in. Seneca
+// validates the options against them and fills in the defaults.
+const defaults = ({ valid }: { valid: Seneca.Instance['valid'] }) => ({
   default_spec: {
     active: true,
     fields: [],
-    read: Open({
+    read: valid.Open({
       // default true
       //usr: true,
       //org: true
     }),
-    write: Open({
+    write: valid.Open({
       // default true
       //usr: true,
       //org: true
     }),
-    inject: Open({
+    inject: valid.Open({
       // default true
       //usr: true,
       //org: true
     }),
-    alter: Open({
+    alter: valid.Open({
       // default false
       //usr: false,
       //org: false
     }),
-    public: Open({
-      read: Open({
+    public: valid.Open({
+      read: valid.Open({
         // field -> public boolean field
       })
     })
@@ -46,37 +48,30 @@ const defaults = {
   ownerprop: 'sysowner',
   caseprop: 'case$',
   roleprop: 'role',
-  defaultRole: Any(),
-  ownerfield: Skip(String),
+  defaultRole: valid.Any(),
+  ownerfield: valid.Skip(String),
   rolesys: false,
-  roles: Skip(Open({})),
+  roles: valid.Skip(valid.Open({})),
   entprop: 'ent',
   queryprop: 'q',
   annotate: [],
   ignore: [],
   fields: [],
   owner_required: true,
-  explain: Any(),
+  explain: valid.Any(),
 
   include: {
-    custom: Open({})
+    custom: valid.Open({})
   }
-}
-
-
-// shape's builder nodes differ from seneca's bundled gubu, so this spec can't
-// be passed as plugin.defaults; validate + default-fill inside the plugin.
-const optionShape = Shape(defaults)
+})
 
 
 function Owner(this: any, options: any) {
   const seneca = this
 
-  options = optionShape(options)
-
   const { deep } = seneca.util
 
-  intern.deepextend = seneca.util.deepextend
+  intern.deepextend = deep
 
   options.default_spec.fields = [
     ...new Set(options.default_spec.fields.concat(options.fields))
@@ -175,7 +170,7 @@ function Owner(this: any, options: any) {
         return intern.prior(self, msg, reply, explain, expdata)
       }
 
-      let spec = self.util.deepextend(meta.custom[specP] || default_spec)
+      let spec = self.util.deep(meta.custom[specP] || default_spec)
       const owner = meta.custom[ownerprop] || getprop(meta.custom, ownerprop)
 
       if (!owner && !options.owner_required) {
@@ -224,7 +219,7 @@ function Owner(this: any, options: any) {
       }
 
       explain &&
-        ((expdata.owner = owner), (expdata.spec = self.util.deepextend(spec)))
+        ((expdata.owner = owner), (expdata.spec = self.util.deep(spec)))
 
       let active = spec.active
 
@@ -615,8 +610,7 @@ const getprop = (o: any, p: string, _?: any): any =>
 
 
 
-// `defaults` not attached as Owner.defaults: validated via optionShape instead.
-Object.assign(Owner, { intern })
+Object.assign(Owner, { defaults, intern })
 
 // Prevent name mangling
 Object.defineProperty(Owner, 'name', { value: 'Owner' })

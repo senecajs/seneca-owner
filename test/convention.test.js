@@ -14,8 +14,7 @@ const Plugin = require('..')
 const build = (roles) =>
   Seneca({ legacy: false })
     .test(LOG)
-    .use('promisify')
-    .use('entity')
+    .use('@seneca/entity')
     .use(Plugin, {
       fields: ['owner_id', 'org_id'],
       annotate: ['sys:entity'],

@@ -15,7 +15,7 @@ function make_bar_instance(fin, spec, explain) {
   return (
     Seneca({ legacy: false })
       .test(fin, LOG)
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         explain: explain,
         fields: ['usr', 'org'],

@@ -13,7 +13,7 @@ const Seneca = require('seneca')
 const intern = require('../dist/Owner.js').intern
 const refine_query = require('../dist/refine_query').refine_query
 
-const s0 = Seneca({ legacy: false }).test(LOG).use('promisify')
+const s0 = Seneca({ legacy: false }).test(LOG)
 const qp0 = 'q'
 
 describe('refine_query', function () {

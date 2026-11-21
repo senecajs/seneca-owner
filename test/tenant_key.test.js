@@ -17,8 +17,7 @@ describe('tenant-key', () => {
   test('custom-tenant-key-isolates-tenants', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id', 'tenant_id'],
         annotate: ['sys:entity'],
@@ -62,8 +61,7 @@ describe('tenant-key', () => {
     // No roles declared: built-in presets apply, but the tenant axis is tenant_id.
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id', 'tenant_id'],
         annotate: ['sys:entity'],
@@ -103,8 +101,7 @@ describe('tenant-key', () => {
     // wildcard grant. Tenant axis is tenant_id, so baz scopes to it.
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id', 'tenant_id'],
         annotate: ['sys:entity'],

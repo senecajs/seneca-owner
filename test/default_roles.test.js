@@ -17,8 +17,7 @@ describe('default-roles', () => {
   test('member-default-is-wildcard-but-owner-and-tenant-bounded', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],
@@ -54,8 +53,7 @@ describe('default-roles', () => {
   test('admin-default-reads-whole-tenant-but-never-crosses-it', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],

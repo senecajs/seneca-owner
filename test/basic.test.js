@@ -12,8 +12,7 @@ const Plugin = require('..')
 function makeSeneca() {
   return Seneca({ legacy: false })
     .test(LOG)
-    .use('promisify')
-    .use('entity')
+    .use('@seneca/entity')
     .use(Plugin, {
       fields: ['owner_id'],
       annotate: [

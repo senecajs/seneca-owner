@@ -11,7 +11,7 @@ repository**. If you are trying to *use* the plugin, read
 
 `@seneca/owner` is a [Seneca](https://senecajs.org) plugin that enforces
 **data ownership and role permissions** on
-[`seneca-entity`](https://github.com/senecajs/seneca-entity)
+[`@seneca/entity`](https://github.com/senecajs/seneca-entity)
 operations. You declare which entity fields identify an owner
 (`fields: ['owner_id','org_id']`) and which message patterns to guard
 (`annotate: ['sys:entity']`); the plugin then wraps those messages so
@@ -30,7 +30,7 @@ gateway or auth layer has put on `meta.custom` (`sysowner` by default).
 | [`src/Owner.ts`](src/Owner.ts) | The plugin. Option shape, the `checkOwner` wrapper installed on every annotated pattern, the per-command logic (`list`/`load`/`save`/`remove`), and `intern` helpers (`make_spec`, `match`, `deny`, `resolveFieldNames`). |
 | [`src/build_roles.ts`](src/build_roles.ts) | Compiles the role DAG into per-role Patruns of entity pattern → `{ops, spec}`. Also `default_roles` (the presets) and `axisName`. |
 | [`src/refine_query.ts`](src/refine_query.ts) | Rewrites a query to the owner's field values; handles multi-value axes and public-read flags. |
-| [`src/OwnerDoc.ts`](src/OwnerDoc.ts) | `seneca-doc` descriptions. Currently empty and not wired into the plugin return — see [rough edges](#rough-edges). |
+| [`src/OwnerDoc.ts`](src/OwnerDoc.ts) | `@seneca/doc` descriptions. Currently empty and not wired into the plugin return — see [rough edges](#rough-edges). |
 | `dist/` | Build output (`tsc -d`). **Committed and imported by the tests** via `require('..')` → `package.main` → `dist/Owner.js`. |
 | [`test/`](test/) | `node:test` suites, one dimension per file. `test/helper.js` holds `partial`, `rejects` and `LOG`. |
 | [`test/readme.js`](test/readme.js) | The README Quick Example, runnable (`node test/readme.js`). Keep it in step with the README. |
@@ -185,7 +185,7 @@ prefer fixing them over documenting around them:
   passed into `build_roles` but never read there; `explain` is only
   echoed back in the `config` export. Documented as reserved.
 - **`src/OwnerDoc.ts` is empty and unwired**, and the README carries no
-  `seneca-doc` markers, so `npm run doc` regenerates nothing. The API
+  `@seneca/doc` markers, so `npm run doc` regenerates nothing. The API
   section is hand-maintained. Wiring `doc: docs` into the plugin return
   and restoring the markers would be a real improvement — do it as an
   explicit change, not a drive-by.
@@ -219,7 +219,7 @@ credentials of their own.
 | Script | What it does |
 |---|---|
 | `npm run repo-publish` | clean → install → `repo-publish-quick`. |
-| `npm run repo-publish-quick` | build → test → `seneca-doc` → `repo-tag` (commit, push, tag, push tags) → `repo-stage-publish`. |
+| `npm run repo-publish-quick` | build → test → `@seneca/doc` → `repo-tag` (commit, push, tag, push tags) → `repo-stage-publish`. |
 | `npm run repo-publish-dry` / `-quick-dry` | Same chain with `npm stage publish --dry-run` and no tagging. Verifies the tarball contents without uploading. |
 | `npm run repo-tag-dry` | Reports the tag it would create, warns if it already exists, and prints `git status`. |
 | `npm run repo-stage-publish` | Stage the current version. |

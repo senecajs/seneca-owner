@@ -18,8 +18,7 @@ const Plugin = require('..')
 function makeSeneca(opts) {
   return Seneca({ legacy: false })
     .test(LOG)
-    .use('promisify')
-    .use('entity')
+    .use('@seneca/entity')
     .use(Plugin, opts)
     .ready()
 }

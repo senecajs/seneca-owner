@@ -5,7 +5,7 @@ Quick reminders:
 - **Build before testing.** The suite imports `dist/` (`require('..')`),
   not `src/` — `npm run build` after every source change, or `npm run
   watch` while iterating.
-- The plugin guards `seneca-entity` messages listed in `annotate`
+- The plugin guards `@seneca/entity` messages listed in `annotate`
   (normally `sys:entity`) using the owner record on
   `meta.custom.sysowner`. No owner record means **no enforcement** — that
   is by design, not a bug to fix.

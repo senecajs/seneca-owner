@@ -13,8 +13,7 @@ describe('role', () => {
   test('member-sees-own-rows-only', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
@@ -46,8 +45,7 @@ describe('role', () => {
   test('admin-sees-across-owners', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
@@ -77,8 +75,7 @@ describe('role', () => {
   test('undeclared-entity-is-denied', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
@@ -106,8 +103,7 @@ describe('role', () => {
   test('read-only-grant-blocks-write', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
@@ -135,8 +131,7 @@ describe('role', () => {
   test('op-gate-allows-save-but-denies-remove', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
@@ -164,8 +159,7 @@ describe('role', () => {
   test('per-entity-grant-relaxes-owner-field', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
@@ -207,8 +201,7 @@ describe('role', () => {
   test('no-roles-uses-default-preset', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
@@ -234,8 +227,7 @@ describe('role', () => {
   test('wildcard-grant-gets-full-access', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
@@ -272,8 +264,7 @@ describe('role', () => {
   test('no-roles-is-plain-ownership', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity']
@@ -299,8 +290,7 @@ describe('role', () => {
     // An explicit unknown role must deny; only an absent role uses defaultRole.
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],
@@ -332,8 +322,7 @@ describe('role', () => {
   test('defaultRole-null-denies-unknown-role', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id'],
         annotate: ['sys:entity'],

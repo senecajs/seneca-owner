@@ -8,7 +8,7 @@ program — copy it into a file and run it with `node`.
 You need Node.js 24+ and a directory with the packages installed:
 
 ```sh
-npm install seneca seneca-entity seneca-promisify @seneca/owner
+npm install seneca@^4 @seneca/entity @seneca/owner
 ```
 
 By the end you will have used the three layers the plugin provides:
@@ -28,8 +28,7 @@ const Seneca = require('seneca')
 
 Seneca({ legacy: false })
   .test()
-  .use('promisify')
-  .use('entity')
+  .use('@seneca/entity')
   .use('owner', {
     fields: ['owner_id'],
     annotate: ['sys:entity'],
@@ -40,7 +39,7 @@ Seneca({ legacy: false })
 ```
 
 `annotate: ['sys:entity']` guards every entity operation —
-`seneca-entity` registers `cmd:save,sys:entity`, `cmd:load,sys:entity`
+`@seneca/entity` registers `cmd:save,sys:entity`, `cmd:load,sys:entity`
 and so on, and the plugin wraps them all. `fields: ['owner_id']` says
 rows are owned through their `owner_id` column.
 

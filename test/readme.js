@@ -7,13 +7,12 @@
 
 require('seneca')({ legacy: false })
   .test()
-  .use('promisify')
-  .use('entity')
+  .use('@seneca/entity')
   .use('..', {
     // Ownership axes, most specific first: user, then tenant.
     fields: ['usr', 'org'],
 
-    // Guard every seneca-entity operation.
+    // Guard every @seneca/entity operation.
     annotate: ['sys:entity'],
   })
   .ready(async function () {

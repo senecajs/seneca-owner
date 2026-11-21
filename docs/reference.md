@@ -29,8 +29,7 @@ debug field in `@seneca/owner`. For a guided introduction start with the
 const Seneca = require('seneca')
 
 Seneca({ legacy: false })
-  .use('promisify')
-  .use('entity')
+  .use('@seneca/entity')
   .use('owner', { /* options */ })   // or .use(require('@seneca/owner'), {...})
 ```
 
@@ -39,10 +38,11 @@ prefix, so `.use('owner', …)` and `.use('@seneca/owner', …)` are
 equivalent. The plugin must be registered **after** `entity`, because it
 wraps the entity actions that already exist.
 
-Options are validated by [`shape`](https://www.npmjs.com/package/shape)
-at registration time. An unknown-scope, unknown-parent or cyclic role
-definition throws while the plugin is defining (see
-[error codes](#error-codes)).
+Seneca validates the options against the plugin's defaults at
+registration time. An unknown option, or a value of the wrong type,
+stops the plugin with `invalid_plugin_option`. An unknown-scope,
+unknown-parent or cyclic role definition throws while the plugin is
+defining (see [error codes](#error-codes)).
 
 
 ## Options
@@ -50,7 +50,7 @@ definition throws while the plugin is defining (see
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `fields` | `string[]` | `[]` | The ownership axes, most specific first. Entry syntax is `entity_field` or `owner_field:entity_field` — see [field syntax](#field-syntax). |
-| `annotate` | `string[]` | `[]` | Message patterns to guard (Jsonic strings). Each pattern is `seneca.wrap`ped, so it must match already-registered actions — with `seneca-entity` that is `sys:entity` (or `sys:entity,cmd:save` etc). |
+| `annotate` | `string[]` | `[]` | Message patterns to guard (Jsonic strings). Each pattern is `seneca.wrap`ped, so it must match already-registered actions — with `@seneca/entity` that is `sys:entity` (or `sys:entity,cmd:save` etc). |
 | `ignore` | `string[]` | `[]` | Patterns matched (via Patrun) against each guarded message; a match passes the message straight through unguarded. |
 | `rolesys` | `boolean` | `false` | Master switch for role enforcement. When `false` only field ownership applies and `roles` is ignored. |
 | `roles` | `object` | *(presets)* | Role definitions, see [roles](#roles). When `rolesys` is on and `roles` is absent or empty, the built-in presets apply. |
@@ -62,8 +62,8 @@ definition throws while the plugin is defining (see
 | `default_spec` | `object` | see [spec](#the-spec) | Base spec used when no per-message spec is supplied. `fields` is unioned into `default_spec.fields`. |
 | `owner_required` | `boolean` | `true` | When `false`, a message with no owner record skips ownership handling entirely. See the note below. |
 | `include.custom` | `object` | `{[ownerprop]: {owner$:'exists'}}` | Extra activation conditions on `meta.custom`. Values are compared for equality; `{owner$:'exists'}` means "any non-null value". Keys may be dot paths. Your object is merged over the default, so the owner record is required unless you override that key. |
-| `entprop` | `string` | `'ent'` | Message property holding the entity (matches `seneca-entity`). |
-| `queryprop` | `string` | `'q'` | Message property holding the query (matches `seneca-entity`). |
+| `entprop` | `string` | `'ent'` | Message property holding the entity (matches `@seneca/entity`). |
+| `queryprop` | `string` | `'q'` | Message property holding the query (matches `@seneca/entity`). |
 | `ownerfield` | `string` | *(axis name of `fields[0]`)* | Reserved. Currently threaded into role compilation but not used by it; leave unset. |
 | `explain` | `any` | *(unset)* | Reserved. Explain capture is controlled by Seneca's `explain$`, not by this option; the value is only echoed in the `config` export and explain records. |
 
@@ -415,10 +415,8 @@ See [How-to: debug a decision](how-to.md#debug-why-a-decision-was-made).
 | Requirement | Version |
 |---|---|
 | Node.js | `>=24` |
-| `seneca` | `>=3` (or `>=4.0.0-rc2`) |
-| `seneca-entity` | `>=26` |
-| `seneca-promisify` | `>=3` |
-| `shape` | `>=10` |
+| `seneca` | `^4.0.0` |
+| `@seneca/entity` | `^29.0.0` |
 
 The plugin is written in TypeScript (`src/`), published as CommonJS
 (`dist/`), and ships its own type declarations.
