@@ -33,7 +33,7 @@ the [tutorial](tutorial.md) if you have not set the plugin up before.
 ## Guard only some entity commands
 
 `annotate` patterns are `seneca.wrap`ped, so each must match actions that
-already exist. `seneca-entity` registers `cmd:save,sys:entity`,
+already exist. `@seneca/entity` registers `cmd:save,sys:entity`,
 `cmd:load,sys:entity`, `cmd:list,sys:entity` and
 `cmd:remove,sys:entity`. Guard all of them with the common prefix:
 
@@ -51,7 +51,7 @@ Anything you leave out is **unguarded** — in the example above `list$`
 returns every row to every caller.
 
 A pattern that matches no registered action (for example
-`'sys:entity,base:zed'`, which is narrower than anything `seneca-entity`
+`'sys:entity,base:zed'`, which is narrower than anything `@seneca/entity`
 adds) does not filter the guarded set: it registers a new, priorless
 action that swallows the operation and returns `null`. If entity
 operations start returning `null` for everyone, check this first.
@@ -432,8 +432,7 @@ const LOG = process.env.SENECA_TEST_LOG || 'silent'
 ```js
 const s0 = await Seneca({ legacy: false })
   .test(LOG)
-  .use('promisify')
-  .use('entity')
+  .use('@seneca/entity')
   .use(Plugin, { /* ... */ })
   .ready()
 ```

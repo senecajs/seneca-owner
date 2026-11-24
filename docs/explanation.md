@@ -21,7 +21,7 @@ plugin options.
 
 ## Enforcement at the message layer
 
-Seneca is a message system: `seneca-entity` turns `load$`, `save$`,
+Seneca is a message system: `@seneca/entity` turns `load$`, `save$`,
 `list$` and `remove$` into `sys:entity` messages. The plugin wraps those
 messages (`annotate`) instead of subclassing entities or patching a
 store.

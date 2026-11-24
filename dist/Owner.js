@@ -2,36 +2,37 @@
 /* $lab:coverage:off$ */
 'use strict';
 Object.defineProperty(exports, "__esModule", { value: true });
-const shape_1 = require("shape");
 const refine_query_1 = require("./refine_query");
 const build_roles_1 = require("./build_roles");
 /* $lab:coverage:on$ */
-const defaults = {
+// Default options, built with the validator that Seneca passes in. Seneca
+// validates the options against them and fills in the defaults.
+const defaults = ({ valid }) => ({
     default_spec: {
         active: true,
         fields: [],
-        read: (0, shape_1.Open)({
+        read: valid.Open({
         // default true
         //usr: true,
         //org: true
         }),
-        write: (0, shape_1.Open)({
+        write: valid.Open({
         // default true
         //usr: true,
         //org: true
         }),
-        inject: (0, shape_1.Open)({
+        inject: valid.Open({
         // default true
         //usr: true,
         //org: true
         }),
-        alter: (0, shape_1.Open)({
+        alter: valid.Open({
         // default false
         //usr: false,
         //org: false
         }),
-        public: (0, shape_1.Open)({
-            read: (0, shape_1.Open)({
+        public: valid.Open({
+            read: valid.Open({
             // field -> public boolean field
             })
         })
@@ -40,29 +41,25 @@ const defaults = {
     ownerprop: 'sysowner',
     caseprop: 'case$',
     roleprop: 'role',
-    defaultRole: (0, shape_1.Any)(),
-    ownerfield: (0, shape_1.Skip)(String),
+    defaultRole: valid.Any(),
+    ownerfield: valid.Skip(String),
     rolesys: false,
-    roles: (0, shape_1.Skip)((0, shape_1.Open)({})),
+    roles: valid.Skip(valid.Open({})),
     entprop: 'ent',
     queryprop: 'q',
     annotate: [],
     ignore: [],
     fields: [],
     owner_required: true,
-    explain: (0, shape_1.Any)(),
+    explain: valid.Any(),
     include: {
-        custom: (0, shape_1.Open)({})
+        custom: valid.Open({})
     }
-};
-// shape's builder nodes differ from seneca's bundled gubu, so this spec can't
-// be passed as plugin.defaults; validate + default-fill inside the plugin.
-const optionShape = (0, shape_1.Shape)(defaults);
+});
 function Owner(options) {
     const seneca = this;
-    options = optionShape(options);
     const { deep } = seneca.util;
-    intern.deepextend = seneca.util.deepextend;
+    intern.deepextend = deep;
     options.default_spec.fields = [
         ...new Set(options.default_spec.fields.concat(options.fields))
     ];
@@ -134,7 +131,7 @@ function Owner(options) {
                 explain && (expdata.ignored = true, expdata.ignorepat = ignorepat);
                 return intern.prior(self, msg, reply, explain, expdata);
             }
-            let spec = self.util.deepextend(meta.custom[specP] || default_spec);
+            let spec = self.util.deep(meta.custom[specP] || default_spec);
             const owner = meta.custom[ownerprop] || getprop(meta.custom, ownerprop);
             if (!owner && !options.owner_required) {
                 explain && ((expdata.owner_required = false), (expdata.pass = true));
@@ -171,7 +168,7 @@ function Owner(options) {
                 spec = intern.make_spec(grant.spec, spec);
             }
             explain &&
-                ((expdata.owner = owner), (expdata.spec = self.util.deepextend(spec)));
+                ((expdata.owner = owner), (expdata.spec = self.util.deep(spec)));
             let active = spec.active;
             if (active && hasInclude) {
                 if (include.custom) {
@@ -475,8 +472,7 @@ const intern = (Owner.intern = {
 // get dot path property
 const getprop = (o, p, _) => (_ = ('' + p).match(/^([^\.]+)\.(.*)$/), ((null != o && null != _) ?
     getprop(o[_[1]], _[2]) : (null == o ? o : o[p])));
-// `defaults` not attached as Owner.defaults: validated via optionShape instead.
-Object.assign(Owner, { intern });
+Object.assign(Owner, { defaults, intern });
 // Prevent name mangling
 Object.defineProperty(Owner, 'name', { value: 'Owner' });
 exports.default = Owner;

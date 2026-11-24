@@ -15,8 +15,7 @@ describe('permission', () => {
   test('permissive-convention-still-isolates-owner-and-org', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],
@@ -74,8 +73,7 @@ describe('permission', () => {
   test('multi-role-grants-and-bad-actor-denied', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],

@@ -21,8 +21,7 @@ describe('hierarchy', () => {
   test('senior-role-inherits-junior-permissions', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],
@@ -70,8 +69,7 @@ describe('hierarchy', () => {
   test('senior-sees-junior-rows-within-org', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],
@@ -106,8 +104,7 @@ describe('hierarchy', () => {
   test('org-scope-isolates-tenants', async () => {
     const s0 = await Seneca({ legacy: false })
       .test(LOG)
-      .use('promisify')
-      .use('entity')
+      .use('@seneca/entity')
       .use(Plugin, {
         fields: ['owner_id', 'org_id'],
         annotate: ['sys:entity'],

@@ -14,7 +14,7 @@ const build_roles = require('../dist/build_roles').build_roles
 const s0 = Seneca({ legacy: false }).test(LOG)
 
 const deps = {
-  deep: s0.util.deepextend,
+  deep: s0.util.deep,
   Patrun: s0.util.Patrun,
   error: s0.error.bind(s0)
 }

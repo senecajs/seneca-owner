@@ -12,7 +12,7 @@
 | ![Voxgig](https://www.voxgig.com/res/img/vgt01r.png) | This open source module is sponsored and supported by [Voxgig](https://www.voxgig.com). |
 |---|---|
 
-Ownership and role permissions for [seneca-entity](https://github.com/senecajs/seneca-entity)
+Ownership and role permissions for [@seneca/entity](https://github.com/senecajs/seneca-entity)
 data. Declare which fields identify the owner of a row, and every entity
 message is scoped to the calling user, their organisation, and their
 role — without an ownership clause anywhere in your application code.
@@ -43,13 +43,12 @@ Working on this repository with an AI agent? See
 ```js
 require('seneca')({ legacy: false })
   .test()
-  .use('promisify')
-  .use('entity')
+  .use('@seneca/entity')
   .use('owner', {
     // Ownership axes, most specific first: user, then tenant.
     fields: ['usr', 'org'],
 
-    // Guard every seneca-entity operation.
+    // Guard every @seneca/entity operation.
     annotate: ['sys:entity'],
   })
   .ready(async function () {
@@ -293,7 +292,7 @@ SENECA_TEST_LOG=test npm run test    # restore Seneca error logs while debugging
 
 ## Background
 
-Works with [seneca-entity](https://github.com/senecajs/seneca-entity) to enforce data ownership.
+Works with [@seneca/entity](https://github.com/senecajs/seneca-entity) to enforce data ownership.
 
 Entity operations are Seneca messages (`sys:entity`), so the plugin
 enforces ownership by wrapping those messages: reads have the owner's
